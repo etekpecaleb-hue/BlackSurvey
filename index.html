@@ -3,1237 +3,1174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no">
-  <meta name="theme-color" content="#020617">
+  <meta name="theme-color" content="#f8fafc">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>BlackSurvey • Enterprise Command Center</title>
-  <script src="https://cdn.tailwindcss.com">
-  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    *{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --sidebar-width:clamp(220px, 18vw, 280px);
-      --icon-track-width:clamp(56px, 8vw, 72px);
-      --transition-speed:280ms;
+      --menu-width:280px;
       --safe-bottom:env(safe-area-inset-bottom, 16px);
       --safe-top:env(safe-area-inset-top, 0px);
-      --safe-left:env(safe-area-inset-left, 0px);
-      --safe-right:env(safe-area-inset-right, 0px);
-      --font-xs:clamp(0.625rem, 1.2vw, 0.75rem);
-      --font-sm:clamp(0.75rem, 1.4vw, 0.875rem);
-      --font-base:clamp(0.875rem, 1.6vw, 1rem);
+      --font-xs:clamp(0.6rem, 1.2vw, 0.75rem);
+      --font-sm:clamp(0.7rem, 1.4vw, 0.875rem);
+      --font-base:clamp(0.85rem, 1.6vw, 1rem);
       --font-lg:clamp(1rem, 2vw, 1.25rem);
-      --font-xl:clamp(1.125rem, 2.4vw, 1.5rem);
-      --spacing-xs:clamp(0.25rem, 0.5vw, 0.5rem);
-      --spacing-sm:clamp(0.5rem, 1vw, 0.75rem);
-      --spacing-md:clamp(0.75rem, 1.5vw, 1rem);
-      --spacing-lg:clamp(1rem, 2vw, 1.5rem);
+      --bg-primary:#ffffff;
+      --bg-secondary:#f1f5f9;
+      --bg-card:#f8fafc;
+      --border-color:#e2e8f0;
+      --text-primary:#0f172a;
+      --text-secondary:#475569;
+      --text-muted:#94a3b8;
+      --shadow:0 4px 12px rgba(0,0,0,0.05);
     }
-    html,body{
-      height:100%;width:100%;background:#020617;
-      font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
-      overflow:hidden;-webkit-tap-highlight-color:transparent;
-      font-size:16px;
+    .dark-theme{
+      --bg-primary:#020617;
+      --bg-secondary:#0f172a;
+      --bg-card:#1e293b;
+      --border-color:#334155;
+      --text-primary:#ffffff;
+      --text-secondary:#e2e8f0;
+      --text-muted:#94a3b8;
+      --shadow:0 4px 12px rgba(0,0,0,0.4);
     }
-    @media screen and (max-width:480px){html,body{font-size:14px}}
-    @media screen and (min-width:2560px){html,body{font-size:18px}}
+    html,body{height:100%;width:100%;background:var(--bg-primary);font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;font-size:16px;transition:background 0.3s,color 0.3s;}
+    .custom-scroll::-webkit-scrollbar{width:4px;height:4px}
+    .custom-scroll::-webkit-scrollbar-track{background:var(--bg-secondary);border-radius:8px}
+    .custom-scroll::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:8px}
 
-    .custom-scroll::-webkit-scrollbar{width:clamp(3px,0.5vw,6px);height:clamp(3px,0.5vw,6px)}
-    .custom-scroll::-webkit-scrollbar-track{background:rgba(15,23,42,0.7);border-radius:8px}
-    .custom-scroll::-webkit-scrollbar-thumb{background:#475569;border-radius:8px}
-    .custom-scroll::-webkit-scrollbar-thumb:hover{background:#64748b}
-    @media (pointer:coarse){.custom-scroll::-webkit-scrollbar{width:4px;height:4px}}
+    /* ===== LOADING SCREEN ===== */
+    .loading-screen{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:linear-gradient(135deg,#020617 0%,#0f172a 50%,#1e293b 100%);
+      z-index:9999;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      transition:opacity 0.6s ease,visibility 0.6s ease;
+    }
+    .loading-screen.hidden{
+      opacity:0;visibility:hidden;pointer-events:none;
+    }
+    .loader-logo{
+      width:80px;height:80px;
+      background:linear-gradient(135deg,#06b6d4,#3b82f6,#8b5cf6);
+      border-radius:24px;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 20px 60px rgba(59,130,246,0.4);
+      animation:pulse 2s ease-in-out infinite;
+      margin-bottom:24px;
+    }
+    .loader-logo span{
+      color:white;font-size:36px;font-weight:800;
+    }
+    @keyframes pulse{
+      0%,100%{transform:scale(1);box-shadow:0 20px 60px rgba(59,130,246,0.4);}
+      50%{transform:scale(1.05);box-shadow:0 25px 80px rgba(59,130,246,0.6);}
+    }
+    .loader-title{
+      font-size:clamp(24px,4vw,32px);font-weight:700;color:white;
+      letter-spacing:-0.5px;margin-bottom:8px;
+    }
+    .loader-subtitle{
+      font-size:clamp(12px,1.5vw,14px);color:#94a3b8;
+      letter-spacing:2px;text-transform:uppercase;
+    }
+    .loader-bar-container{
+      width:clamp(200px,30vw,280px);height:3px;
+      background:rgba(255,255,255,0.1);border-radius:10px;
+      margin-top:32px;overflow:hidden;
+    }
+    .loader-bar{
+      height:100%;background:linear-gradient(90deg,#06b6d4,#3b82f6,#8b5cf6);
+      border-radius:10px;width:0%;
+      animation:loadBar 2.5s ease-in-out forwards;
+    }
+    @keyframes loadBar{
+      0%{width:0%}
+      50%{width:70%}
+      100%{width:100%}
+    }
+    .loader-particles{
+      position:absolute;top:0;left:0;width:100%;height:100%;
+      pointer-events:none;overflow:hidden;
+    }
+    .particle{
+      position:absolute;width:4px;height:4px;
+      background:rgba(59,130,246,0.5);border-radius:50%;
+      animation:float 6s infinite;
+    }
+    @keyframes float{
+      0%{transform:translateY(100vh) scale(0);opacity:0;}
+      10%{opacity:1;}
+      90%{opacity:1;}
+      100%{transform:translateY(-10vh) scale(1);opacity:0;}
+    }
 
-    .dashboard-grid{
-      display:grid;height:100vh;width:100%;
-      grid-template-columns:var(--sidebar-width) 1fr;
-      grid-template-rows:1fr;
-      transition:grid-template-columns var(--transition-speed) cubic-bezier(0.2,0.0,0,1.0);
-      background:#020617;
-      overflow:hidden;
+    /* ===== CUSTOM MENU STYLES ===== */
+    .menu-overlay{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:rgba(0,0,0,0.5);z-index:90;
+      opacity:0;visibility:hidden;
+      transition:opacity 0.3s ease,visibility 0.3s ease;
+      backdrop-filter:blur(2px);
     }
-    .dashboard-grid.sidebar-collapsed{grid-template-columns:0px 1fr}
-    .dashboard-grid.icon-nav{grid-template-columns:var(--icon-track-width) 1fr}
-    .dashboard-grid.mobile-stack{
-      grid-template-columns:1fr!important;
-      display:flex!important;
-      flex-direction:column!important;
-    }
-    .dashboard-grid.mobile-stack .sidebar-panel{
-      width:100%;max-height:clamp(48px,12vh,60px);
-      overflow:hidden;transition:max-height 0.35s ease;
-      flex-shrink:0;position:relative;z-index:50;
-    }
-    .dashboard-grid.mobile-stack .sidebar-panel.expanded{max-height:50vh}
+    .menu-overlay.active{opacity:1;visibility:visible;}
 
-    .sidebar-panel{
-      background:#0f172a;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-      border-right:1px solid rgba(71,85,105,0.4);
-      display:flex;flex-direction:column;
-      transition:all var(--transition-speed) ease;
-      overflow:hidden;position:relative;
-      min-width:0;
+    .custom-menu-panel{
+      position:fixed;top:0;left:0;height:100%;width:var(--menu-width);
+      max-width:85vw;background:var(--bg-secondary);
+      backdrop-filter:blur(16px);border-right:1px solid var(--border-color);
+      z-index:95;transform:translateX(-100%);
+      transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+      display:flex;flex-direction:column;padding:1.5rem 1rem;
+      box-shadow:8px 0 24px rgba(0,0,0,0.15);overflow-y:auto;
     }
-    .dashboard-grid.sidebar-collapsed .sidebar-panel{
-      border-right:none;padding:0!important;overflow:hidden;width:0;min-width:0;
-    }
-    .icon-nav .sidebar-text{display:none}
-    .icon-nav .nav-icon{justify-content:center}
-    .icon-nav .sidebar-item{justify-content:center;padding:clamp(0.6rem,1.5vh,0.85rem) 0}
+    .custom-menu-panel.active{transform:translateX(0);}
 
-    .sidebar-toggle{
-      position:absolute;top:clamp(8px,1.5vh,12px);right:clamp(8px,1.5vh,12px);z-index:30;
-      width:clamp(28px,4vw,36px);height:clamp(28px,4vw,36px);
-      border-radius:clamp(6px,1vw,8px);
-      background:rgba(30,41,59,0.8);border:1px solid rgba(71,85,105,0.5);
-      color:#94a3b8;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;transition:all 0.2s;font-size:var(--font-sm);
-      flex-shrink:0;
-    }
-    .sidebar-toggle:hover{background:rgba(59,130,246,0.3);color:#93c5fd;border-color:#3b82f6}
-    .sidebar-toggle:active{transform:scale(0.9)}
-
-    .sidebar-open-floating{
-      display:none;position:fixed;top:clamp(12px,2vh,16px);left:clamp(12px,2vw,16px);z-index:100;
+    .menu-open-btn{
       width:clamp(36px,5vw,44px);height:clamp(36px,5vw,44px);
-      border-radius:clamp(10px,1.5vw,12px);
-      background:#1e293b;border:1px solid rgba(71,85,105,0.6);
-      color:#e2e8f0;align-items:center;justify-content:center;
-      cursor:pointer;font-size:var(--font-lg);
-      box-shadow:0 8px 24px rgba(0,0,0,0.5);transition:all 0.2s;
+      border-radius:12px;background:var(--bg-card);
+      border:1px solid var(--border-color);color:var(--text-primary);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;transition:all 0.25s ease;
       flex-shrink:0;
     }
-    .sidebar-open-floating:hover{background:#3b82f6;border-color:#3b82f6;color:white}
-    .sidebar-open-floating:active{transform:scale(0.9)}
-    .dashboard-grid.sidebar-collapsed .sidebar-open-floating{display:flex}
+    .menu-open-btn:hover{background:#3b82f6;color:white;border-color:#3b82f6;transform:scale(1.05);}
+    .menu-open-btn:active{transform:scale(0.96);}
 
-    .nav-item{
-      transition:all 0.2s ease;cursor:pointer;
-      min-height:clamp(36px,5vh,44px);
-      display:flex;align-items:center;flex-shrink:0;
+    .menu-close-btn{
+      position:absolute;top:1rem;right:1rem;width:36px;height:36px;
+      border-radius:10px;background:var(--bg-card);
+      border:1px solid var(--border-color);color:var(--text-secondary);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;font-size:1.4rem;transition:all 0.2s;
     }
-    .nav-item:active{transform:scale(0.97)}
-    .nav-item.active{background:rgba(59,130,246,0.2);color:#93c5fd;border-left:3px solid #3b82f6}
+    .menu-close-btn:hover{background:#ef4444;color:white;border-color:#ef4444;}
 
-    .stat-card{
-      background:rgba(30,41,59,0.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-      border:1px solid rgba(100,116,139,0.25);border-radius:clamp(0.75rem,1.2vw,1rem);
-      transition:transform 0.2s;padding:clamp(0.75rem,1.5vw,1rem);
-      min-height:clamp(70px,10vh,100px);
-      display:flex;flex-direction:column;justify-content:center;
+    .menu-nav-item{
+      transition:all 0.2s;cursor:pointer;min-height:48px;
+      display:flex;align-items:center;gap:0.9rem;
+      padding:0.6rem 1rem;border-radius:0.75rem;
+      color:var(--text-secondary);margin-bottom:0.4rem;font-weight:500;
     }
-    @media(hover:hover){.stat-card:hover{transform:translateY(-2px);box-shadow:0 12px 24px -8px rgba(0,0,0,0.6)}}
-    @media (pointer:coarse){.stat-card:active{transform:scale(0.98)}}
+    .menu-nav-item:hover{background:var(--bg-card);color:var(--text-primary);}
+    .menu-nav-item.active{background:#3b82f6;color:white;box-shadow:0 6px 14px rgba(59,130,246,0.35);}
 
-    .status-pill{
-      padding:clamp(0.15rem,0.3vw,0.2rem) clamp(0.5rem,1vw,0.75rem);
-      border-radius:9999px;font-size:var(--font-xs);font-weight:600;
-      letter-spacing:0.3px;text-transform:uppercase;
-      display:inline-block;white-space:nowrap;
-    }
-    .status-active{background:#065f46;color:#d1fae5}
-    .status-completed{background:#1e3a8a;color:#dbeafe}
-    .status-pending{background:#92400e;color:#fef3c7}
-    .status-onhold{background:#4c1d95;color:#ede9fe}
-    .sync-synced{background:#065f46;color:#d1fae5}
-    .sync-pending{background:#92400e;color:#fef3c7}
-    .sync-failed{background:#7f1d1d;color:#fecaca}
-    .sync-offline{background:#1e293b;color:#94a3b8;border:1px solid #475569}
-    .form-complete{background:#065f46;color:#d1fae5}
-    .form-incomplete{background:#7f1d1d;color:#fecaca}
+    .nav-icon-svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
 
+    /* Main layout */
+    .app-main{height:100vh;width:100%;display:flex;flex-direction:column;background:var(--bg-primary);overflow:hidden;}
+
+    /* Status pills */
+    .status-pill{padding:0.15rem 0.6rem;border-radius:9999px;font-size:var(--font-xs);font-weight:600;letter-spacing:0.3px;text-transform:uppercase;display:inline-block;white-space:nowrap;}
+    .status-active{background:#dcfce7;color:#166534}
+    .status-completed{background:#dbeafe;color:#1e40af}
+    .status-pending{background:#fef3c7;color:#92400e}
+    .status-onhold{background:#ede9fe;color:#5b21b6}
+    .sync-synced{background:#dcfce7;color:#166534}
+    .sync-pending{background:#fef3c7;color:#92400e}
+    .sync-failed{background:#fee2e2;color:#991b1b}
+    .sync-offline{background:var(--bg-secondary);color:var(--text-muted);border:1px solid var(--border-color)}
+    .form-complete{background:#dcfce7;color:#166534}
+    .form-incomplete{background:#fee2e2;color:#991b1b}
+
+    /* Form inputs */
     .field-input{
-      background:#1e293b;border:1px solid #334155;
+      background:var(--bg-card);border:1px solid var(--border-color);
       border-radius:clamp(10px,1.2vw,12px);
       padding:clamp(12px,1.8vh,16px) clamp(14px,2vw,18px);
-      font-size:var(--font-base);color:#e2e8f0;width:100%;
+      font-size:var(--font-base);color:var(--text-primary);width:100%;
       transition:border 0.2s,box-shadow 0.2s;
-      -webkit-appearance:none;appearance:none;
       min-height:clamp(44px,6vh,52px);
     }
-    .field-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.2)}
+    .field-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.15)}
     .field-select{
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23475569' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;
+    }
+    .dark-theme .field-select{
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
-      background-repeat:no-repeat;background-position:right clamp(12px,1.5vw,16px) center;
-      padding-right:clamp(36px,5vw,44px);
     }
-    .field-input:disabled{opacity:0.5;cursor:not-allowed;background:#1a2332;}
 
-    .location-search-wrapper{position:relative}
-    .search-dropdown{
-      position:absolute;top:100%;left:0;right:0;
-      background:#1e293b;border:1px solid #334155;
-      border-radius:0 0 clamp(10px,1.2vw,12px) clamp(10px,1.2vw,12px);
-      max-height:clamp(200px,35vh,300px);overflow-y:auto;
-      z-index:100;box-shadow:0 16px 32px rgba(0,0,0,0.6);
-      display:none;
-    }
-    .search-dropdown.active{display:block}
-    .search-dropdown-item{
-      padding:clamp(10px,1.5vh,14px) clamp(12px,2vw,16px);
-      cursor:pointer;transition:background 0.15s;
-      border-bottom:1px solid rgba(51,65,85,0.5);
-      display:flex;flex-direction:column;gap:2px;
-      min-height:clamp(44px,6vh,52px);
-    }
-    .search-dropdown-item:last-child{border-bottom:none}
-    .search-dropdown-item:hover,.search-dropdown-item:active{background:rgba(59,130,246,0.2)}
-    .search-dropdown-item .location-name{color:#e2e8f0;font-size:var(--font-sm);font-weight:500}
-    .search-dropdown-item .location-path{color:#64748b;font-size:var(--font-xs)}
-    .search-dropdown-item .location-type{font-size:clamp(0.625rem,1vw,0.7rem);color:#3b82f6;text-transform:uppercase;letter-spacing:0.5px}
-    .search-highlight{background:rgba(59,130,246,0.3);border-radius:2px;padding:0 2px}
-    .no-results{padding:clamp(12px,2vh,16px);text-align:center;color:#64748b;font-size:var(--font-sm)}
+    /* View panels */
+    .view-panel{display:none!important;flex:1;overflow:hidden;min-height:0}
+    .view-panel.active{display:flex!important;flex-direction:column}
 
-    .conditional-field{transition:max-height 0.35s ease,opacity 0.25s ease;overflow:hidden}
-    .conditional-hidden{max-height:0!important;opacity:0;margin-top:0!important;margin-bottom:0!important}
-
-    .capture-btn{
-      background:linear-gradient(135deg,#1e293b,#0f172a);
-      border:2px dashed #475569;border-radius:clamp(12px,1.5vw,16px);
-      transition:all 0.2s;cursor:pointer;
-      padding:clamp(0.75rem,1.5vw,1rem);
-      min-height:clamp(60px,10vh,80px);
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(4px,0.8vh,8px);
+    /* Header stats */
+    .header-stat{
+      display:inline-flex;align-items:center;gap:0.375rem;font-size:var(--font-xs);
+      color:var(--text-secondary);background:var(--bg-card);
+      border:1px solid var(--border-color);border-radius:0.5rem;padding:0.375rem 0.625rem;
     }
-    .capture-btn:active{border-color:#3b82f6;background:#1e3a5f;transform:scale(0.97)}
+    .header-stat .stat-value{font-weight:600;color:var(--text-primary)}
+    .header-stat .stat-value.green{color:#16a34a}
+    .header-stat .stat-value.amber{color:#d97706}
+    .header-stat .stat-value.red{color:#dc2626}
 
-    .sync-pulse{animation:syncPulse 2s infinite}
-    @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:0.4}}
-    .latency-dot{
-      width:clamp(6px,0.8vw,10px);height:clamp(6px,0.8vw,10px);
-      border-radius:50%;display:inline-block;
-    }
-    .latency-low{background:#10b981;box-shadow:0 0 6px #10b981}
+    /* Latency indicator */
+    .latency-dot{width:clamp(6px,0.8vw,10px);height:clamp(6px,0.8vw,10px);border-radius:50%;display:inline-block;flex-shrink:0}
+    .latency-low{background:#22c55e;box-shadow:0 0 6px #22c55e}
     .latency-medium{background:#f59e0b;box-shadow:0 0 6px #f59e0b}
     .latency-high{background:#ef4444;box-shadow:0 0 6px #ef4444}
-    .latency-offline{background:#6b7280}
+    .latency-offline{background:#94a3b8}
 
+    /* Stat cards */
+    .stat-card{
+      background:var(--bg-card);border:1px solid var(--border-color);
+      border-radius:clamp(0.75rem,1.2vw,1rem);padding:clamp(0.75rem,1.5vw,1rem);
+      min-height:clamp(70px,10vh,100px);display:flex;flex-direction:column;
+      justify-content:center;box-shadow:var(--shadow);
+      transition:transform 0.2s,box-shadow 0.2s;
+    }
+    .stat-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.08)}
+
+    /* Analysis grid */
+    .analysis-grid-container{
+      background:var(--bg-card);border:1px solid var(--border-color);
+      border-radius:12px;overflow:hidden;min-height:0;
+      display:flex;flex-direction:column;flex:1;
+    }
+
+    /* Toast notifications */
     .toast{
-      position:fixed;bottom:clamp(80px,12vh,100px);left:50%;transform:translateX(-50%);
-      background:#10b981;color:white;padding:clamp(10px,1.5vh,14px) clamp(16px,3vw,24px);
-      border-radius:clamp(30px,4vw,40px);font-weight:600;
-      font-size:var(--font-sm);z-index:9999;
-      box-shadow:0 8px 24px rgba(0,0,0,0.5);
-      animation:slideUp 0.3s ease;white-space:nowrap;
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+      background:#22c55e;color:white;padding:10px 24px;border-radius:40px;
+      font-weight:600;font-size:var(--font-sm);z-index:9999;
+      box-shadow:0 8px 24px rgba(0,0,0,0.2);animation:slideUp 0.3s ease;
       max-width:90vw;text-align:center;
     }
-    .toast.warning{background:#ef4444;}
+    .toast.warning{background:#ef4444}
     @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
 
-    .view-panel{display:none;flex:1;overflow:hidden;min-height:0}
-    .view-panel.active{display:flex;flex-direction:column}
+    /* Search dropdown */
+    .search-dropdown{
+      position:absolute;top:100%;left:0;right:0;background:var(--bg-card);
+      border:1px solid var(--border-color);border-radius:0 0 12px 12px;
+      max-height:200px;overflow-y:auto;z-index:100;box-shadow:var(--shadow);display:none;
+    }
+    .search-dropdown.active{display:block}
+    .search-dropdown-item{padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid var(--border-color);}
+    .search-dropdown-item:hover{background:#3b82f6;color:white}
 
+    /* Steps */
+    .step-dot{
+      width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+      justify-content:center;font-size:var(--font-xs);font-weight:700;
+      background:var(--bg-card);border:2px solid var(--border-color);
+      color:var(--text-muted);transition:all 0.3s;
+    }
+    .step-dot.active{background:#3b82f6;border-color:#3b82f6;color:white}
+    .step-dot.completed{background:#22c55e;border-color:#22c55e;color:white}
+    .step-line{flex:1;height:2px;background:var(--border-color);max-width:60px}
+    .step-line.completed{background:#22c55e}
+
+    /* Maps */
+    .mini-map-container{
+      background:var(--bg-card);border:1px solid var(--border-color);
+      border-radius:12px;overflow:hidden;cursor:pointer;transition:border 0.3s;position:relative;
+    }
+    .mini-map-container:hover{border-color:#3b82f6}
+    .mini-map-container .map-hint{
+      position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.7);
+      color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:10px;z-index:1000;pointer-events:none;
+    }
+    .expanded-map-overlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);
+      z-index:300;display:flex;flex-direction:column;padding:1rem;
+    }
+    .expanded-map-overlay .map-header{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:0.5rem 1rem;background:var(--bg-card);border-radius:12px 12px 0 0;
+      border:1px solid var(--border-color);border-bottom:none;
+    }
+    .expanded-map-overlay .map-body{flex:1;border:1px solid var(--border-color);border-radius:0 0 12px 12px;overflow:hidden;}
+    .gis-map-wrapper{
+      flex:1;border-radius:12px;overflow:hidden;border:1px solid var(--border-color);
+      position:relative;z-index:1;
+    }
+    .leaflet-container{background:#e8edf3;font-family:'Inter',sans-serif;}
+    .dark-theme .leaflet-container{background:#0f172a;}
+    .leaflet-control-zoom a{background:var(--bg-card)!important;color:var(--text-primary)!important;border-color:var(--border-color)!important;}
+    .leaflet-control-attribution{background:rgba(255,255,255,0.8)!important;color:var(--text-muted)!important;font-size:10px!important;}
+    .dark-theme .leaflet-control-attribution{background:rgba(15,23,42,0.8)!important;color:#64748b!important;}
+
+    /* Mobile bottom bar */
     .mobile-bottom-bar{
-      background:rgba(15,23,42,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border-top:1px solid rgba(71,85,105,0.5);
-      padding:clamp(0.75rem,1.5vh,1rem) clamp(1rem,2vw,1.25rem);
-      padding-bottom:calc(clamp(0.75rem,1.5vh,1rem) + var(--safe-bottom));
-      flex-shrink:0;
+      background:var(--bg-secondary);border-top:1px solid var(--border-color);
+      padding:0.75rem 1rem;padding-bottom:calc(0.75rem + var(--safe-bottom));flex-shrink:0;
     }
-    .mobile-bottom-bar button{
-      padding:clamp(12px,2vh,16px);font-size:var(--font-sm);
-      min-height:clamp(44px,7vh,56px);
-    }
-    .mobile-bottom-bar button:active{transform:scale(0.95)}
+    .mobile-bottom-bar button{min-height:44px;}
 
-    .agent-badge{
-      background:linear-gradient(135deg,#3b82f6,#06b6d4);
-      box-shadow:0 4px 12px rgba(59,130,246,0.4);
-      width:clamp(32px,5vw,44px);height:clamp(32px,5vw,44px);
-      min-width:clamp(28px,4vw,36px);min-height:clamp(28px,4vw,36px);
+    /* Capture buttons */
+    .capture-btn{
+      background:var(--bg-card);border:2px dashed var(--border-color);border-radius:12px;
+      transition:all 0.2s;cursor:pointer;padding:0.75rem;min-height:60px;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:4px;color:var(--text-secondary);
     }
+    .capture-btn:hover{border-color:#3b82f6;background:#eff6ff}
 
-    .top-stat-item{
-      display:flex;align-items:center;gap:clamp(4px,0.6vw,6px);
-      font-size:var(--font-xs);color:#94a3b8;
-      white-space:nowrap;
-    }
-
-    .status-cell{position:relative;cursor:help}
-    @media(hover:hover){.status-cell:hover .status-tooltip{display:block}}
-    @media (pointer:coarse){.status-cell:active .status-tooltip{display:block}}
-    .status-tooltip{
-      display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-      background:#1e293b;border:1px solid #475569;border-radius:8px;
-      padding:clamp(4px,0.8vh,6px) clamp(8px,1.2vw,10px);
-      font-size:clamp(0.625rem,1vw,0.7rem);white-space:nowrap;z-index:50;
-      color:#e2e8f0;box-shadow:0 8px 20px rgba(0,0,0,0.6);
-      pointer-events:none;
-    }
-
-    .location-chip{
-      display:inline-flex;align-items:center;gap:clamp(4px,0.6vw,6px);
-      background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);
-      border-radius:clamp(16px,2vw,20px);padding:clamp(3px,0.5vh,4px) clamp(10px,1.5vw,12px);
-      font-size:var(--font-xs);color:#93c5fd;
-      flex-wrap:wrap;
-    }
-    .location-chip button{
-      background:none;border:none;color:#93c5fd;cursor:pointer;
-      font-size:var(--font-sm);padding:0 2px;
-    }
-    .location-chip button:hover{color:#ef4444}
-    .location-chip button:active{transform:scale(0.8)}
-
+    /* Ledger */
+    .ledger-row{border-bottom:1px solid var(--border-color);}
     .hidden-el{display:none!important}
     .truncate-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-    .analysis-grid-container{
-      display:flex;flex-direction:column;
-      background:rgba(15,23,42,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-      border:1px solid rgba(71,85,105,0.3);border-radius:clamp(0.75rem,1.2vw,1rem);
-      overflow:hidden;min-height:0;
+    /* Theme toggle */
+    .theme-toggle-btn{
+      width:36px;height:36px;border-radius:50%;border:1px solid var(--border-color);
+      background:var(--bg-card);color:var(--text-primary);display:flex;
+      align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;font-size:1.1rem;
+    }
+    .theme-toggle-btn:hover{background:#3b82f6;color:white;border-color:#3b82f6;}
+
+    /* Agent badge */
+    .agent-badge{
+      background:linear-gradient(135deg,#3b82f6,#06b6d4);box-shadow:0 4px 12px rgba(59,130,246,0.4);
+      width:clamp(32px,5vw,44px);height:clamp(32px,5vw,44px);border-radius:50%;
+      display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:var(--font-xs);
     }
 
-    /* Mobile card view for ledger */
-    @media (max-width:767px){
-      .desktop-table-header{display:none!important;}
-      .ledger-row{
-        display:flex!important;
-        flex-direction:column!important;
-        padding:clamp(0.75rem,2vw,1rem)!important;
-        gap:clamp(4px,1vw,6px)!important;
-        border-bottom:1px solid rgba(51,65,85,0.5)!important;
-      }
-      .ledger-row .ledger-cell{
-        display:flex!important;
-        justify-content:space-between!important;
-        align-items:center!important;
-        font-size:var(--font-xs)!important;
-      }
-      .ledger-row .ledger-cell::before{
-        content:attr(data-label);
-        font-weight:600;color:#94a3b8;font-size:clamp(0.6rem,2vw,0.7rem);
-        text-transform:uppercase;letter-spacing:0.3px;
-        margin-right:clamp(8px,2vw,12px);
-        flex-shrink:0;
-      }
-      .ledger-row .ledger-cell .cell-value{
-        text-align:right;
-        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-        max-width:60%;
-      }
-      .ledger-row .ledger-actions{
-        display:flex;justify-content:flex-end;gap:clamp(6px,1.5vw,10px);
-        margin-top:clamp(4px,1vw,6px);
-        padding-top:clamp(4px,1vw,6px);
-        border-top:1px solid rgba(51,65,85,0.3);
-      }
+    /* Location chip */
+    .location-chip{
+      display:inline-flex;align-items:center;gap:4px;background:#dbeafe;
+      border:1px solid #93c5fd;border-radius:20px;padding:3px 12px;
+      font-size:var(--font-xs);color:#1e40af;flex-wrap:wrap;
     }
 
-    .checklist-item{display:flex;align-items:center;gap:clamp(6px,1vw,8px);font-size:var(--font-xs)}
-    .checklist-item span:first-child{min-width:clamp(16px,2.5vw,20px);text-align:center}
-
-    button{
-      -webkit-tap-highlight-color:transparent;
-      touch-action:manipulation;
+    /* Modal */
+    .modal-overlay{
+      position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);
+      z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;
     }
-    @media (pointer:coarse){
-      button,select,.nav-item,.search-dropdown-item{
-        min-height:44px;
-      }
+    .modal-content{
+      background:var(--bg-card);border:1px solid var(--border-color);border-radius:1rem;
+      padding:1.5rem;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;color:var(--text-primary);
     }
 
-    /* Step indicator */
-    .step-indicator{
-      display:flex;align-items:center;justify-content:center;gap:clamp(4px,1vw,8px);
-      margin-bottom:clamp(1rem,2vh,1.5rem);
-    }
-    .step-dot{
-      width:clamp(28px,4vw,36px);height:clamp(28px,4vw,36px);
-      border-radius:50%;display:flex;align-items:center;justify-content:center;
-      font-size:var(--font-xs);font-weight:700;
-      background:#1e293b;border:2px solid #475569;color:#64748b;
-      transition:all 0.3s;
-    }
-    .step-dot.active{background:#3b82f6;border-color:#3b82f6;color:white;}
-    .step-dot.completed{background:#10b981;border-color:#10b981;color:white;}
-    .step-line{flex:1;height:2px;background:#475569;max-width:clamp(40px,8vw,80px);}
-    .step-line.completed{background:#10b981;}
-
-    /* Geolocation display */
-    .geo-display{
-      background:#1e293b;border:1px solid #334155;
-      border-radius:clamp(10px,1.2vw,12px);
-      padding:clamp(12px,1.8vh,16px);
-      font-family:monospace;font-size:var(--font-xs);
-      color:#93c5fd;word-break:break-all;
+    /* About section */
+    .about-gradient-text{
+      background:linear-gradient(135deg,#3b82f6,#06b6d4,#8b5cf6);
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      background-clip:text;
     }
 
-    @supports(padding:env(safe-area-inset-bottom)){
-      .mobile-bottom-bar{padding-bottom:calc(clamp(0.75rem,1.5vh,1rem) + env(safe-area-inset-bottom, 16px))}
-      .sidebar-panel{padding-top:env(safe-area-inset-top, 0px)}
+    /* Field capture scrollable on mobile */
+    @media (max-width: 767px){
+      .view-panel.active{overflow-y:auto!important;-webkit-overflow-scrolling:touch;}
+      .desktop-table-header{display:none!important}
+      .ledger-row{display:flex!important;flex-direction:column!important;padding:0.75rem!important;gap:4px!important;}
+      .ledger-row .ledger-cell{display:flex!important;justify-content:space-between!important;align-items:center!important;font-size:var(--font-xs)!important;}
+      .ledger-row .ledger-cell::before{content:attr(data-label);font-weight:600;color:var(--text-muted);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.3px;margin-right:8px;flex-shrink:0;}
+    }
+    @media (max-width: 480px) {
+      .custom-menu-panel{width:100%;max-width:100%;}
     }
   </style>
 </head>
-<body class="text-slate-200 antialiased">
+<body class="text-slate-800 antialiased" id="appBody">
 
-  <button id="sidebarOpenFloating" class="sidebar-open-floating" title="Open Sidebar" aria-label="Open sidebar">☰</button>
-
-  <div id="dashboardGrid" class="dashboard-grid">
-    <!-- SIDEBAR -->
-    <aside id="sidebarPanel" class="sidebar-panel p-3 md:p-4 custom-scroll flex flex-col z-20">
-      <button id="sidebarToggle" class="sidebar-toggle" title="Collapse Sidebar" aria-label="Collapse sidebar">◀</button>
-      <div class="flex items-center gap-2 md:gap-3 mb-6 md:mb-8 mt-1 px-1 md:px-2 flex-shrink-0">
-        <div class="w-7 h-7 md:w-8 md:h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
-          <span class="text-white font-bold text-base md:text-lg">B</span>
-        </div>
-        <span class="sidebar-text text-lg md:text-xl font-semibold tracking-tight text-white truncate-text">BlackSurvey</span>
-      </div>
-      <nav class="flex flex-col gap-1 md:gap-1.5 flex-1">
-        <div id="navMetrics" class="nav-item sidebar-item active flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg font-medium text-sm md:text-base" data-view="dashboard">
-          <span class="nav-icon w-4 h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">📊</span>
-          <span class="sidebar-text truncate-text">Metrics Hub</span>
-        </div>
-        <div id="navFieldCapture" class="nav-item sidebar-item flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg text-slate-300 hover:bg-white/5 text-sm md:text-base" data-view="fieldCapture">
-          <span class="nav-icon w-4 h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">📋</span>
-          <span class="sidebar-text truncate-text">Field Capture</span>
-        </div>
-        <div id="navRecords" class="nav-item sidebar-item flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg text-slate-300 hover:bg-white/5 text-sm md:text-base" data-view="records">
-          <span class="nav-icon w-4 h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">🗂️</span>
-          <span class="sidebar-text truncate-text">Records Ledger</span>
-        </div>
-        <div id="navGIS" class="nav-item sidebar-item flex items-center gap-2 md:gap-3 px-2 md:px-3 py-2 md:py-2.5 rounded-lg text-slate-300 hover:bg-white/5 text-sm md:text-base" data-view="gis">
-          <span class="nav-icon w-4 h-4 md:w-5 md:h-5 flex items-center justify-center flex-shrink-0">🗺️</span>
-          <span class="sidebar-text truncate-text">GIS Map Canvas</span>
-        </div>
-      </nav>
-      <div class="mt-auto pt-3 md:pt-4 border-t border-slate-700/50 flex-shrink-0">
-        <div class="flex items-center gap-2 md:gap-3 px-1 md:px-2 py-1 md:py-2">
-          <div class="agent-badge rounded-full flex items-center justify-center text-white font-bold text-xs md:text-sm flex-shrink-0">AM</div>
-          <div class="sidebar-text min-w-0">
-            <p class="text-xs md:text-sm font-medium text-white truncate-text">A. Marek</p>
-            <p class="text-[10px] md:text-xs text-slate-400 truncate-text">Field Agent • Rivers</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- MAIN CONTENT -->
-    <main class="flex flex-col overflow-hidden custom-scroll relative" style="background:radial-gradient(circle at 20% 20%, #0f172a, #020617);">
-
-      <!-- DASHBOARD VIEW -->
-      <div id="viewDashboard" class="view-panel active flex-col overflow-hidden">
-        <div class="px-3 md:px-4 lg:px-6 py-2 md:py-3 flex flex-wrap items-center justify-between gap-2 md:gap-3 border-b border-slate-800/60 flex-shrink-0 bg-slate-900/40">
-          <div class="flex items-center gap-2 md:gap-4">
-            <button id="topBarSidebarToggle" class="hidden-el w-7 h-7 md:w-8 md:h-8 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 items-center justify-center hover:bg-slate-700 transition flex-shrink-0" title="Open Sidebar" aria-label="Open sidebar" style="display:none;">☰</button>
-            <h2 class="text-base md:text-lg font-semibold text-white tracking-tight truncate-text">Infrastructure Intelligence</h2>
-          </div>
-          <div class="flex items-center gap-2 md:gap-4 flex-wrap">
-            <div class="top-stat-item"><span>📶</span><span class="hidden sm:inline">Network</span><span id="networkLatencyValue" class="font-mono text-white">32ms</span><span id="latencyDot" class="latency-dot latency-low"></span></div>
-            <div class="top-stat-item hidden sm:flex"><span>🖥️</span><span id="serverStatus" class="font-mono text-emerald-400">Online</span></div>
-            <div class="top-stat-item"><span>📡</span><span class="hidden sm:inline">Queue</span><span id="topSyncCount" class="font-mono text-amber-400">3</span></div>
-            <div class="top-stat-item hidden md:flex"><span>🕐</span><span id="lastSyncTime" class="font-mono text-slate-400">12s</span></div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 md:gap-3 w-full sm:w-auto">
-            <select id="stateFilter" class="bg-slate-800 border border-slate-700 rounded-lg px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none min-w-0" aria-label="Filter by state">
-              <option value="">All States (37)</option>
-            </select>
-            <select id="statusFilter" class="bg-slate-800 border border-slate-700 rounded-lg px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none min-w-0" aria-label="Filter by status">
-              <option value="">All Statuses</option><option value="Active">Active</option><option value="Completed">Completed</option><option value="Pending">Pending</option><option value="On Hold">On Hold</option>
-            </select>
-            <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-1 md:py-1.5 rounded-lg text-xs md:text-sm font-medium transition shadow-lg shadow-blue-600/20 flex items-center gap-1 md:gap-2 flex-shrink-0 active:scale-95">
-              <span>⬇️</span><span class="hidden sm:inline">Export CSV</span>
-            </button>
-          </div>
-        </div>
-        <div id="statsRow" class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 px-3 md:px-4 lg:px-6 py-3 md:py-4 flex-shrink-0"></div>
-        <div class="flex-1 px-3 md:px-4 lg:px-6 pb-4 md:pb-6 overflow-hidden flex flex-col min-h-0">
-          <div class="analysis-grid-container flex-1 min-h-0">
-            <div class="desktop-table-header hidden sm:grid text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-800/70 px-3 md:px-4 py-2 md:py-3 border-b border-slate-700/50 flex-shrink-0" style="grid-template-columns:60px 1fr 0.8fr 1.2fr 90px 75px 75px 75px 60px;">
-              <span>ID</span><span>Timestamp</span><span>Agent</span><span>Location</span><span>Infra</span><span>Status</span><span>Sync</span><span>Form</span><span>Act</span>
-            </div>
-            <div id="ledgerBody" class="overflow-y-auto custom-scroll flex-1"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FIELD CAPTURE VIEW -->
-      <div id="viewFieldCapture" class="view-panel flex-col overflow-hidden">
-        <div class="bg-black/80 text-xs text-slate-400 flex justify-between px-3 md:px-5 py-1.5 md:py-2 items-center flex-shrink-0">
-          <span class="font-medium text-white text-xs md:text-sm">BlackSurvey • Field Capture</span>
-          <div class="flex items-center gap-2 md:gap-3">
-            <span id="gpsIndicator" class="flex items-center gap-1 text-emerald-400"><span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-400 rounded-full"></span><span class="hidden xs:inline">GPS</span></span>
-            <span id="syncIndicator" class="flex items-center gap-1 text-amber-400 sync-pulse"><span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-amber-400 rounded-full"></span><span id="syncCount">3</span><span class="hidden xs:inline">pending</span></span>
-          </div>
-        </div>
-        <div class="bg-slate-800/80 px-3 md:px-5 py-2 md:py-3 flex items-center justify-between border-b border-slate-700/50 flex-shrink-0">
-          <div class="min-w-0 flex-1 mr-2">
-            <h2 class="text-white font-semibold text-sm md:text-lg truncate-text">New Infrastructure Entry</h2>
-            <p class="text-[10px] md:text-xs text-slate-400 flex items-center gap-1 truncate-text"><span>📍</span><span id="currentLocation">Port Harcourt, Rivers</span></p>
-          </div>
-          <div class="agent-badge rounded-full flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0">AM</div>
-        </div>
-
-        <!-- STEP INDICATOR -->
-        <div class="step-indicator px-3 md:px-5 pt-3 md:pt-4 flex-shrink-0">
-          <div id="stepDot1" class="step-dot active">1</div>
-          <div id="stepLine1" class="step-line"></div>
-          <div id="stepDot2" class="step-dot">2</div>
-          <div id="stepLine2" class="step-line"></div>
-          <div id="stepDot3" class="step-dot">3</div>
-        </div>
-
-        <div class="flex-1 overflow-y-auto px-3 md:px-4 lg:px-5 py-3 md:py-5 space-y-3 md:space-y-5" style="-webkit-overflow-scrolling:touch;">
-
-          <!-- STEP 1: FORM QUESTIONS -->
-          <div id="step1Content">
-            <div class="bg-blue-900/20 border border-blue-700/30 rounded-xl p-3 md:p-4 mb-4">
-              <h3 class="text-blue-300 font-semibold text-sm md:text-base mb-1">Step 1: Project Details</h3>
-              <p class="text-slate-400 text-[10px] md:text-xs">Fill in all required fields about the infrastructure project</p>
-            </div>
-
-            <div>
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Infrastructure Type <span class="text-red-400">*</span></label>
-              <select id="infraType" class="field-input field-select" aria-label="Infrastructure type">
-                <option value="">-- Select Type --</option><option value="tower">Telecom Tower</option><option value="datacenter">Data Center</option><option value="fiber">Fiber Optic Link</option><option value="power">Power Grid Station</option><option value="sensor">Sensor Array</option><option value="relay">Relay Station</option>
-              </select>
-            </div>
-            <div id="towerHeightGroup" class="conditional-field max-h-40 conditional-hidden">
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Tower Height (meters)</label>
-              <input type="number" id="towerHeight" class="field-input" placeholder="e.g. 45" inputmode="numeric">
-            </div>
-            <div id="fiberLengthGroup" class="conditional-field max-h-40 conditional-hidden">
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Fiber Span (km)</label>
-              <input type="number" id="fiberLength" class="field-input" placeholder="e.g. 12.5" step="0.1" inputmode="decimal">
-            </div>
-
-            <div>
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Project Location <span class="text-red-400">*</span></label>
-              <div class="location-search-wrapper mb-2 md:mb-3">
-                <input type="text" id="locationSearch" class="field-input" placeholder="🔍 Search state, LGA, town or village..." autocomplete="off" aria-label="Search location">
-                <div id="searchDropdown" class="search-dropdown"></div>
-              </div>
-              <div id="selectedLocationDisplay" class="mb-2 md:mb-3 hidden-el">
-                <span class="text-[10px] md:text-xs text-slate-400 block mb-1">Selected Location:</span>
-                <div class="location-chip"><span id="locationChipText"></span><button id="clearLocation" title="Clear selection" aria-label="Clear location">✕</button></div>
-              </div>
-              <div class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
-                <div>
-                  <label class="text-slate-400 text-[10px] md:text-xs font-medium mb-1 block">State <span class="text-red-400">*</span></label>
-                  <select id="targetState" class="field-input field-select text-xs md:text-sm" aria-label="Select state"><option value="">-- Select State --</option></select>
-                </div>
-                <div>
-                  <label class="text-slate-400 text-[10px] md:text-xs font-medium mb-1 block">LGA</label>
-                  <select id="targetLGA" class="field-input field-select text-xs md:text-sm" disabled aria-label="Select LGA"><option value="">Select state first</option></select>
-                </div>
-                <div>
-                  <label class="text-slate-400 text-[10px] md:text-xs font-medium mb-1 block">Town / Village</label>
-                  <select id="targetTown" class="field-input field-select text-xs md:text-sm" disabled aria-label="Select town"><option value="">Select LGA first</option></select>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Project Status</label>
-              <select id="projectStatus" class="field-input field-select" aria-label="Project status">
-                <option value="Active">Active</option><option value="Pending">Pending</option><option value="Completed">Completed</option><option value="On Hold">On Hold</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="text-slate-300 text-xs md:text-sm font-semibold uppercase tracking-wider mb-1.5 md:mb-2 block">Agent Notes</label>
-              <textarea id="agentNotes" class="field-input h-20 md:h-24 resize-none" placeholder="Additional observations..." aria-label="Agent notes"></textarea>
-            </div>
-
-            <!-- Auto-calculated completion -->
-            <div class="bg-slate-800/60 rounded-xl p-3 md:p-4 border border-slate-700/30">
-              <div class="flex items-center justify-between mb-2">
-                <h4 class="text-xs md:text-sm font-semibold text-slate-300 uppercase tracking-wider">Form Completion</h4>
-                <span id="completionValue" class="text-blue-400 font-bold text-lg md:text-xl">0%</span>
-              </div>
-              <div class="w-full bg-slate-700 rounded-full h-2 md:h-3 overflow-hidden">
-                <div id="completionBar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-500" style="width:0%"></div>
-              </div>
-              <div class="space-y-1.5 md:space-y-2 mt-3">
-                <div class="checklist-item"><span id="checkType" class="text-red-400">❌</span><span class="text-slate-400">Infrastructure Type selected</span></div>
-                <div class="checklist-item"><span id="checkLocation" class="text-red-400">❌</span><span class="text-slate-400">Location selected (State + LGA)</span></div>
-                <div class="checklist-item"><span id="checkStatus" class="text-slate-500">⚪</span><span class="text-slate-400">Project status set</span></div>
-                <div class="checklist-item"><span id="checkNotes" class="text-slate-500">⚪</span><span class="text-slate-400">Agent notes (optional)</span></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- STEP 2: MEDIA CAPTURE -->
-          <div id="step2Content" class="hidden-el">
-            <div class="bg-purple-900/20 border border-purple-700/30 rounded-xl p-3 md:p-4 mb-4">
-              <h3 class="text-purple-300 font-semibold text-sm md:text-base mb-1">Step 2: Media Capture</h3>
-              <p class="text-slate-400 text-[10px] md:text-xs">Capture photos and videos of the infrastructure site</p>
-            </div>
-            <div class="grid grid-cols-2 gap-3 md:gap-4">
-              <button id="capturePhotoBtn" class="capture-btn text-slate-300" aria-label="Capture photo">
-                <span class="text-2xl md:text-3xl">📸</span>
-                <span class="text-xs md:text-sm font-medium">Capture Photo</span>
-                <span id="photoStatus" class="text-[10px] md:text-xs text-slate-500">0 images</span>
-              </button>
-              <button id="captureVideoBtn" class="capture-btn text-slate-300" aria-label="Record video">
-                <span class="text-2xl md:text-3xl">🎥</span>
-                <span class="text-xs md:text-sm font-medium">Record Clip</span>
-                <span id="videoStatus" class="text-[10px] md:text-xs text-slate-500">0 clips</span>
-              </button>
-            </div>
-            <div id="compressionNotice" class="hidden mt-2 md:mt-3 text-[10px] md:text-xs text-amber-400 flex items-center gap-1"><span>⚡</span> Auto-compressing media for low-bandwidth sync...</div>
-
-            <!-- Media preview area -->
-            <div id="mediaPreviewArea" class="mt-4 space-y-2">
-              <p class="text-slate-400 text-[10px] md:text-xs">Captured media will appear here</p>
-            </div>
-          </div>
-
-          <!-- STEP 3: GEOLOCATION & REVIEW -->
-          <div id="step3Content" class="hidden-el">
-            <div class="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-3 md:p-4 mb-4">
-              <h3 class="text-emerald-300 font-semibold text-sm md:text-base mb-1">Step 3: Geolocation & Review</h3>
-              <p class="text-slate-400 text-[10px] md:text-xs">Confirm GPS coordinates and review all entries before submission</p>
-            </div>
-
-            <div class="geo-display mb-4">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-slate-400 text-[10px] md:text-xs uppercase tracking-wider">Current GPS Coordinates</span>
-                <button id="refreshGPSBtn" class="text-blue-400 text-xs hover:text-blue-300 transition" title="Refresh GPS">🔄 Refresh</button>
-              </div>
-              <div class="grid grid-cols-2 gap-3 text-sm md:text-base">
-                <div><span class="text-slate-500">Latitude:</span> <span id="gpsLat" class="text-white">4.81560</span></div>
-                <div><span class="text-slate-500">Longitude:</span> <span id="gpsLng" class="text-white">7.04980</span></div>
-                <div><span class="text-slate-500">Altitude:</span> <span id="gpsAlt" class="text-white">12.5m</span></div>
-                <div><span class="text-slate-500">Accuracy:</span> <span id="gpsAcc" class="text-emerald-400">±3.2m</span></div>
-              </div>
-            </div>
-
-            <!-- Review summary -->
-            <div class="bg-slate-800/60 rounded-xl p-3 md:p-4 border border-slate-700/30">
-              <h4 class="text-xs md:text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">Entry Summary</h4>
-              <div class="space-y-2 text-[10px] md:text-xs">
-                <div class="flex justify-between"><span class="text-slate-400">Type:</span><span id="reviewType" class="text-white">-</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Location:</span><span id="reviewLocation" class="text-white">-</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Status:</span><span id="reviewStatus" class="text-white">-</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Media:</span><span id="reviewMedia" class="text-white">0 photos, 0 videos</span></div>
-                <div class="flex justify-between"><span class="text-slate-400">Completion:</span><span id="reviewCompletion" class="text-blue-400 font-bold">0%</span></div>
-              </div>
-            </div>
-
-            <div class="bg-slate-800/60 rounded-xl p-3 md:p-4 flex items-center gap-2 md:gap-3 border border-slate-700/30 mt-4">
-              <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-emerald-900/50 flex items-center justify-center text-emerald-400 flex-shrink-0 text-sm md:text-base">💾</div>
-              <div class="min-w-0">
-                <p class="text-white text-xs md:text-sm font-medium">Ready to Submit</p>
-                <p class="text-[10px] md:text-xs text-slate-400 truncate-text">Entry will be saved to offline outbox</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- BOTTOM BAR -->
-        <div class="mobile-bottom-bar px-3 md:px-5 py-3 md:py-4 flex gap-2 md:gap-3 flex-shrink-0">
-          <button id="prevStepBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl text-xs md:text-sm transition active:scale-95 hidden-el">◀ Previous</button>
-          <button id="nextStepBtn" class="flex-[2] bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs md:text-sm shadow-lg shadow-blue-600/30 transition active:scale-95">Next: Media Capture ▶</button>
-          <button id="submitEntryBtn" class="flex-[2] bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl text-xs md:text-sm shadow-lg shadow-emerald-600/30 transition active:scale-95 hidden-el">📤 Submit Entry</button>
-        </div>
-      </div>
-
-      <!-- PLACEHOLDER VIEWS -->
-      <div id="viewRecords" class="view-panel items-center justify-center text-slate-500"><div class="text-center p-4"><span class="text-3xl md:text-5xl block mb-3 md:mb-4">🗂️</span><p class="text-base md:text-lg">Records Ledger</p><p class="text-xs md:text-sm text-slate-600 mt-1 md:mt-2">Full data table coming soon</p></div></div>
-      <div id="viewGIS" class="view-panel items-center justify-center text-slate-500"><div class="text-center p-4"><span class="text-3xl md:text-5xl block mb-3 md:mb-4">🗺️</span><p class="text-base md:text-lg">GIS Map Canvas</p><p class="text-xs md:text-sm text-slate-600 mt-1 md:mt-2">Map integration coming soon</p></div></div>
-    </main>
+  <!-- LOADING SCREEN -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loader-particles" id="particlesContainer"></div>
+    <div class="loader-logo">
+      <span>B</span>
+    </div>
+    <div class="loader-title">BlackSurvey</div>
+    <div class="loader-subtitle">Enterprise Command Center</div>
+    <div class="loader-bar-container">
+      <div class="loader-bar"></div>
+    </div>
+    <div style="position:absolute;bottom:40px;text-align:center;">
+      <p style="color:#64748b;font-size:11px;letter-spacing:1px;">POWERED BY</p>
+      <p style="color:#3b82f6;font-size:13px;font-weight:600;letter-spacing:0.5px;">KALIVDIGITALS</p>
+    </div>
   </div>
 
+  <!-- MENU OVERLAY -->
+  <div id="menuOverlay" class="menu-overlay"></div>
+
+  <!-- SLIDE-OUT MENU PANEL -->
+  <div id="customMenuPanel" class="custom-menu-panel" style="z-index: 1000;">
+    <button id="menuCloseBtn" class="menu-close-btn" title="Close Menu">✕</button>
+    <div class="flex items-center gap-3 mb-8 mt-2 px-2">
+      <div class="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shadow-lg">
+        <span class="text-white font-bold text-lg">B</span>
+      </div>
+      <span class="text-xl font-semibold tracking-tight" style="color:var(--text-primary)">BlackSurvey</span>
+    </div>
+    <nav class="flex flex-col gap-1 flex-1">
+      <div class="menu-nav-item active" data-view="dashboard">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>Metrics Hub</span>
+      </div>
+      <div class="menu-nav-item" data-view="fieldCapture">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>Field Capture</span>
+      </div>
+      <div class="menu-nav-item" data-view="records">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Records Ledger</span>
+      </div>
+      <div class="menu-nav-item" data-view="gis">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span>GIS Map</span>
+      </div>
+      <div class="menu-nav-item" data-view="settings">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M4.22 4.22l2.83 2.83"/><path d="M16.95 16.95l2.83 2.83"/><path d="M1 12h4"/><path d="M19 12h4"/><path d="M4.22 19.78l2.83-2.83"/><path d="M16.95 7.05l2.83-2.83"/></svg>
+        <span>Settings</span>
+      </div>
+    </nav>
+    <div class="mt-auto pt-4 border-t" style="border-color:var(--border-color)">
+      <div class="flex items-center gap-3 px-2">
+        <div class="agent-badge">AM</div>
+        <div>
+          <p class="text-sm font-medium" style="color:var(--text-primary)">A. Marek</p>
+          <p class="text-xs" style="color:var(--text-secondary)">Field Agent • Rivers</p>
+        </div>
+      </div>
+      <p class="text-[10px] mt-2 px-2" style="color:var(--text-muted)">v4.1 • enterprise</p>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <main class="app-main custom-scroll" style="background:var(--bg-primary)">
+    <!-- TOP BAR -->
+    <div class="px-3 md:px-4 lg:px-6 py-2 md:py-3 flex flex-wrap items-center justify-between gap-2 border-b flex-shrink-0" style="border-color:var(--border-color);background:var(--bg-secondary)">
+      <div class="flex items-center gap-2 md:gap-3">
+        <button id="menuOpenBtn" class="menu-open-btn" title="Open Menu">
+          <svg class="nav-icon-svg" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h2 class="text-sm md:text-lg font-semibold tracking-tight truncate-text" style="color:var(--text-primary)">Infrastructure Intelligence</h2>
+      </div>
+      <div class="flex items-center gap-1.5 md:gap-2 flex-wrap">
+        <div class="header-stat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/></svg>
+          <span class="hidden sm:inline">Net</span>
+          <span id="networkLatencyValue" class="stat-value">--ms</span>
+          <span id="latencyDot" class="latency-dot latency-offline"></span>
+        </div>
+        <div class="header-stat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          <span class="hidden sm:inline">Status</span>
+          <span id="connectionStatus" class="stat-value red">Checking...</span>
+        </div>
+        <div class="header-stat">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span class="hidden sm:inline">Queue</span>
+          <span id="topSyncCount" class="stat-value amber">0</span>
+        </div>
+        <div class="header-stat hidden md:inline-flex">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="lastSyncTime" class="stat-value">12s ago</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5 md:gap-2 w-full sm:w-auto">
+        <select id="stateFilter" class="bg-card border border-border rounded-lg px-2 md:px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none min-w-0" style="background:var(--bg-card);border-color:var(--border-color);color:var(--text-primary);">
+          <option value="">All States (37)</option>
+        </select>
+        <select id="statusFilter" class="bg-card border border-border rounded-lg px-2 md:px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 sm:flex-none min-w-0" style="background:var(--bg-card);border-color:var(--border-color);color:var(--text-primary);">
+          <option value="">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Completed">Completed</option>
+          <option value="Pending">Pending</option>
+          <option value="On Hold">On Hold</option>
+        </select>
+        <button id="syncAllBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition flex items-center gap-1.5 flex-shrink-0 active:scale-95 hidden-el">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          <span class="hidden sm:inline">Sync</span>
+        </button>
+        <button id="exportCsvBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition flex items-center gap-1.5 flex-shrink-0 active:scale-95">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="hidden sm:inline">Export</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div id="viewDashboard" class="view-panel active flex-col overflow-hidden">
+      <div id="statsRow" class="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4 px-3 md:px-4 lg:px-6 py-3 md:py-4 flex-shrink-0"></div>
+      <div class="flex-1 px-3 md:px-4 lg:px-6 pb-4 md:pb-6 overflow-hidden flex flex-col min-h-0">
+        <div class="analysis-grid-container flex-1 min-h-0">
+          <div class="desktop-table-header hidden sm:grid text-xs font-semibold uppercase tracking-wider px-3 md:px-4 py-2 md:py-3 border-b flex-shrink-0" style="grid-template-columns:70px 1.2fr 1fr 1.3fr 100px 90px 85px 70px 70px;border-color:var(--border-color);color:var(--text-secondary);">
+            <span>ID</span><span>Timestamp</span><span>Agent</span><span>Location</span><span>Infra</span><span>Status</span><span>Sync</span><span>Form</span><span>Act</span>
+          </div>
+          <div id="ledgerBody" class="overflow-y-auto custom-scroll flex-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIELD CAPTURE VIEW -->
+    <div id="viewFieldCapture" class="view-panel flex-col overflow-hidden">
+      <div class="bg-secondary/90 text-xs flex justify-between px-3 md:px-5 py-1.5 items-center flex-shrink-0 border-b" style="border-color:var(--border-color);color:var(--text-secondary);">
+        <span class="font-semibold text-xs tracking-wide" style="color:var(--text-primary);">BlackSurvey • Field Capture</span>
+        <div class="flex items-center gap-2 md:gap-3">
+          <span id="gpsIndicator" class="flex items-center gap-1 text-emerald-600"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span><span class="hidden xs:inline text-[10px]">GPS</span></span>
+          <span id="syncIndicator" class="flex items-center gap-1 text-amber-600"><span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span><span id="syncCount">0</span><span class="hidden xs:inline text-[10px]">pending</span></span>
+        </div>
+      </div>
+      <div class="bg-card/90 px-3 md:px-5 py-2 flex items-center justify-between border-b flex-shrink-0" style="border-color:var(--border-color);">
+        <div class="min-w-0 flex-1 mr-2">
+          <h2 class="font-semibold text-sm md:text-base truncate-text" style="color:var(--text-primary);">New Infrastructure Entry</h2>
+          <p class="text-[10px] flex items-center gap-1 truncate-text" style="color:var(--text-secondary);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span id="currentLocation">Acquiring GPS...</span></p>
+        </div>
+        <div class="agent-badge">AM</div>
+      </div>
+      <div class="step-indicator px-3 pt-3 flex-shrink-0 flex items-center justify-center gap-2">
+        <div id="stepDot1" class="step-dot active">1</div><div id="stepLine1" class="step-line"></div>
+        <div id="stepDot2" class="step-dot">2</div><div id="stepLine2" class="step-line"></div>
+        <div id="stepDot3" class="step-dot">3</div>
+      </div>
+      <div class="flex-1 overflow-y-auto px-3 md:px-4 py-3 space-y-3 custom-scroll" style="-webkit-overflow-scrolling:touch;min-height:0;">
+        <div id="step1Content">
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3 dark:bg-blue-900/20 dark:border-blue-700/30"><h3 class="text-blue-700 font-semibold text-sm dark:text-blue-300">Step 1: Project Details</h3><p class="text-secondary text-[10px]">Fill in required fields about the infrastructure</p></div>
+          <div><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Infrastructure Type <span class="text-red-500">*</span></label>
+            <select id="infraType" class="field-input field-select"><option value="">-- Select Type --</option><option value="tower">Telecom Tower</option><option value="datacenter">Data Center</option><option value="fiber">Fiber Optic Link</option><option value="power">Power Grid Station</option><option value="sensor">Sensor Array</option><option value="relay">Relay Station</option><option value="custom">🖊️ Other (Custom)...</option></select>
+          </div>
+          <div id="customTypeGroup" class="hidden-el mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Specify Custom Type <span class="text-red-500">*</span></label><div class="flex gap-2"><input type="text" id="customInfraType" class="field-input flex-1" placeholder="e.g. Underground Cable Vault"><button id="saveCustomTypeBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition active:scale-95 flex-shrink-0">Save</button></div></div>
+          <div id="towerHeightGroup" class="conditional-field max-h-40 conditional-hidden mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Tower Height (meters)</label><input type="number" id="towerHeight" class="field-input" placeholder="e.g. 45" inputmode="numeric"></div>
+          <div id="fiberLengthGroup" class="conditional-field max-h-40 conditional-hidden mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Fiber Span (km)</label><input type="number" id="fiberLength" class="field-input" placeholder="e.g. 12.5" step="0.1" inputmode="decimal"></div>
+          <div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Project Location <span class="text-red-500">*</span></label>
+            <div class="location-search-wrapper relative mb-2"><input type="text" id="locationSearch" class="field-input" placeholder="🔍 Search state, LGA, town..." autocomplete="off"><div id="searchDropdown" class="search-dropdown"></div></div>
+            <div id="selectedLocationDisplay" class="mb-2 hidden-el"><div class="location-chip"><span id="locationChipText"></span><button id="clearLocation" class="text-blue-600 hover:text-red-500 ml-1">✕</button></div></div>
+            <div class="grid grid-cols-1 xs:grid-cols-3 gap-2"><select id="targetState" class="field-input field-select text-xs"><option value="">-- State --</option></select><select id="targetLGA" class="field-input field-select text-xs" disabled><option value="">Select state first</option></select><select id="targetTown" class="field-input field-select text-xs" disabled><option value="">Select LGA first</option></select></div>
+          </div>
+          <div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block flex items-center gap-2" style="color:var(--text-secondary);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Location Preview<span class="text-[10px] font-normal" style="color:var(--text-muted);">(click to expand)</span></label><div id="miniMapContainer" class="mini-map-container" style="height:180px;"><div id="miniMap" style="width:100%;height:100%;"></div><div class="map-hint">🔍 Click to expand</div></div></div>
+          <div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Project Status</label><select id="projectStatus" class="field-input field-select"><option value="Active">Active</option><option value="Pending">Pending</option><option value="Completed">Completed</option><option value="On Hold">On Hold</option></select></div>
+          <div class="mt-3"><label class="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style="color:var(--text-secondary);">Agent Notes</label><textarea id="agentNotes" class="field-input h-20 resize-none" placeholder="Additional observations..."></textarea></div>
+          <div class="bg-card/60 rounded-xl p-3 border mt-3 mb-4" style="border-color:var(--border-color);"><div class="flex items-center justify-between mb-2"><h4 class="text-xs font-semibold uppercase" style="color:var(--text-secondary);">Form Completion</h4><span id="completionValue" class="text-blue-600 font-bold text-lg">0%</span></div><div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden dark:bg-slate-700"><div id="completionBar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-all duration-500" style="width:0%"></div></div><div class="space-y-1.5 mt-2 text-xs"><div class="flex items-center gap-2"><span id="checkType" class="text-red-500">❌</span><span style="color:var(--text-secondary);">Infrastructure Type selected</span></div><div class="flex items-center gap-2"><span id="checkLocation" class="text-red-500">❌</span><span style="color:var(--text-secondary);">Location selected (State + LGA)</span></div></div></div>
+        </div>
+        <div id="step2Content" class="hidden-el"><div class="bg-purple-50 border border-purple-200 rounded-xl p-3 mb-3 dark:bg-purple-900/20 dark:border-purple-700/30"><h3 class="text-purple-700 font-semibold text-sm dark:text-purple-300">Step 2: Media Capture</h3><p class="text-secondary text-[10px]">Capture photos and videos of the site</p></div><div class="grid grid-cols-2 gap-3"><button id="capturePhotoBtn" class="capture-btn"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="18" height="14" rx="2" ry="2"/><circle cx="12" cy="14" r="4"/><line x1="18" y1="5" x2="18" y2="3"/><line x1="14" y1="5" x2="14" y2="3"/><line x1="10" y1="5" x2="10" y2="3"/><line x1="6" y1="5" x2="6" y2="3"/></svg><span class="text-xs font-medium">Capture Photo</span><span id="photoStatus" class="text-[10px]" style="color:var(--text-muted);">0 images</span></button><button id="captureVideoBtn" class="capture-btn"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span class="text-xs font-medium">Record Clip</span><span id="videoStatus" class="text-[10px]" style="color:var(--text-muted);">0 clips</span></button></div><div id="compressionNotice" class="hidden mt-2 text-[10px] text-amber-600 flex items-center gap-1">⚡ Auto-compressing for low-bandwidth sync...</div><div id="mediaPreviewArea" class="mt-3 space-y-1"><p class="text-[10px]" style="color:var(--text-muted);">No media captured yet</p></div></div>
+        <div id="step3Content" class="hidden-el"><div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3 dark:bg-emerald-900/20 dark:border-emerald-700/30"><h3 class="text-emerald-700 font-semibold text-sm dark:text-emerald-300">Step 3: Geolocation & Review</h3><p class="text-secondary text-[10px]">Confirm GPS coordinates and review entry</p></div><div class="geo-display bg-card border rounded-xl p-3 mb-3" style="border-color:var(--border-color);"><div class="flex justify-between items-center mb-2"><span class="text-[10px] uppercase tracking-wider" style="color:var(--text-secondary);">Device GPS Coordinates</span><button id="refreshGPSBtn" class="text-blue-600 text-xs hover:text-blue-700 transition">🔄 Refresh</button></div><div class="grid grid-cols-2 gap-2 text-sm"><div><span style="color:var(--text-muted);">Latitude:</span> <span id="gpsLat" class="font-mono" style="color:var(--text-primary);">--</span></div><div><span style="color:var(--text-muted);">Longitude:</span> <span id="gpsLng" class="font-mono" style="color:var(--text-primary);">--</span></div><div><span style="color:var(--text-muted);">Altitude:</span> <span id="gpsAlt" style="color:var(--text-primary);">--</span></div><div><span style="color:var(--text-muted);">Accuracy:</span> <span id="gpsAcc" class="text-emerald-600">--</span></div></div></div><div class="bg-card/60 rounded-xl p-3 border mb-3" style="border-color:var(--border-color);"><div class="flex items-center justify-between mb-2"><h4 class="text-xs font-semibold uppercase" style="color:var(--text-secondary);">Entry Summary</h4><button id="editEntryBtn" class="text-blue-600 text-xs hover:text-blue-700 transition">✏️ Edit</button></div><div class="space-y-1.5 text-[10px]"><div class="flex justify-between"><span style="color:var(--text-muted);">Type:</span><span id="reviewType" style="color:var(--text-primary);">-</span></div><div class="flex justify-between"><span style="color:var(--text-muted);">Location:</span><span id="reviewLocation" style="color:var(--text-primary);">-</span></div><div class="flex justify-between"><span style="color:var(--text-muted);">Status:</span><span id="reviewStatus" style="color:var(--text-primary);">-</span></div><div class="flex justify-between"><span style="color:var(--text-muted);">Media:</span><span id="reviewMedia" style="color:var(--text-primary);">0 photos, 0 videos</span></div><div class="flex justify-between"><span style="color:var(--text-muted);">GPS:</span><span id="reviewGPS" class="font-mono" style="color:var(--text-primary);">--</span></div></div></div><div class="bg-card/60 rounded-xl p-3 flex items-center gap-2 border mb-4" style="border-color:var(--border-color);"><div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 flex-shrink-0 dark:bg-emerald-900/30"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div><div><p class="text-xs font-medium" style="color:var(--text-primary);">Ready to Submit</p><p class="text-[10px]" style="color:var(--text-muted);">Entry will be saved to offline outbox</p></div></div></div>
+      </div>
+      <div class="mobile-bottom-bar px-3 py-3 flex gap-2 flex-shrink-0">
+        <button id="prevStepBtn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs transition active:scale-95 hidden-el dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">◀ Previous</button>
+        <button id="nextStepBtn" class="flex-[2] bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-xl text-xs shadow-lg shadow-blue-600/30 transition active:scale-95">Next: Media ▶</button>
+        
+        <button id="submitEntryBtn" class="flex-[2] bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition active:scale-95 hidden-el">📤 Submit Entry</button>
+        
+      </div>
+      <br><br><br>
+    </div>
+
+    <!-- RECORDS VIEW -->
+    <div id="viewRecords" class="view-panel flex-col overflow-hidden">
+      <div class="px-3 md:px-5 py-3 border-b flex-shrink-0 flex items-center justify-between" style="border-color:var(--border-color);background:var(--bg-secondary);"><div><h2 class="text-base md:text-lg font-semibold" style="color:var(--text-primary);">Records Ledger</h2><p class="text-[10px]" style="color:var(--text-muted);">Complete history • Timestamps are immutable 🔒</p></div><button id="recordsSyncAllBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 flex items-center gap-1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Sync All</button></div>
+      <div class="flex-1 overflow-y-auto custom-scroll px-3 md:px-5 py-3" id="recordsLedgerBody"></div>
+    </div>
+
+    <!-- GIS VIEW -->
+    <div id="viewGIS" class="view-panel flex-col overflow-hidden">
+      <div class="px-3 md:px-5 py-3 border-b flex-shrink-0 flex items-center justify-between" style="border-color:var(--border-color);background:var(--bg-secondary);"><div><h2 class="text-base md:text-lg font-semibold" style="color:var(--text-primary);">GIS Map Canvas</h2><p class="text-[10px]" style="color:var(--text-muted);">OpenStreetMap • All infrastructure sites</p></div></div>
+      <div class="flex-1 p-3 md:p-4 overflow-hidden relative"><div id="gisMapContainer" class="gis-map-wrapper" style="width:100%;height:100%;"></div></div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div id="viewSettings" class="view-panel flex-col overflow-hidden">
+      <div class="px-3 md:px-5 py-3 border-b flex-shrink-0" style="border-color:var(--border-color);background:var(--bg-secondary);"><h2 class="text-base md:text-lg font-semibold" style="color:var(--text-primary);">Settings</h2><p class="text-[10px]" style="color:var(--text-muted);">Customize your experience</p></div>
+      <div class="flex-1 overflow-y-auto custom-scroll px-3 md:px-5 py-4 space-y-4">
+        <div class="rounded-xl p-4 border" style="background:var(--bg-card);border-color:var(--border-color);"><h3 class="text-sm font-semibold mb-3" style="color:var(--text-primary);">Appearance</h3><div class="flex items-center justify-between"><div><p class="text-sm" style="color:var(--text-primary);">Dark Mode</p><p class="text-xs" style="color:var(--text-muted);">Switch between light and dark theme</p></div><button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle theme"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div>
+        <div class="rounded-xl p-4 border" style="background:var(--bg-card);border-color:var(--border-color);">
+          <h3 class="text-sm font-semibold mb-3" style="color:var(--text-primary);">About BlackSurvey</h3>
+          <div class="space-y-3">
+            <p class="text-xs leading-relaxed" style="color:var(--text-secondary);">BlackSurvey Enterprise Command Center is a cutting-edge field operations platform designed for infrastructure monitoring across Nigeria's 36 states and FCT.</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-center">
+                <span class="block text-lg font-bold about-gradient-text">37</span>
+                <span style="color:var(--text-muted);">States Covered</span>
+              </div>
+              <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-2 text-center">
+                <span class="block text-lg font-bold text-emerald-600">4.1</span>
+                <span style="color:var(--text-muted);">Version</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs flex-wrap" style="color:var(--text-muted);">
+              <span>🔒 End-to-End Encrypted</span>
+              <span class="hidden sm:inline">•</span>
+              <span>🛰️ GPS Synchronized</span>
+              <span class="hidden sm:inline">•</span>
+              <span>📡 Offline-First</span>
+            </div>
+            <p class="text-[10px]" style="color:var(--text-muted);">Built with precision for field agents, surveyors, and infrastructure monitoring teams. Real-time sync • Geospatial intelligence • Immutable records.</p>
+            <div class="pt-2 border-t" style="border-color:var(--border-color);">
+              <p class="text-[10px] text-center" style="color:var(--text-muted);">Powered by <span style="color:#3b82f6;font-weight:600;">KalivDigitals</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- EXPANDED MAP OVERLAY -->
+  <div id="expandedMapOverlay" class="expanded-map-overlay hidden-el"><div class="map-header"><span class="font-semibold text-sm" style="color:var(--text-primary);">📍 Location Map</span><button id="closeExpandedMap" class="hover:text-primary text-xl leading-none" style="color:var(--text-secondary);">✕</button></div><div class="map-body" id="expandedMapBody"></div></div>
+  <!-- MODAL -->
+  <div id="modalOverlay" class="modal-overlay hidden-el"><div class="modal-content" id="modalContent"></div></div>
   <div id="toastContainer"></div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     (function() {
-      const NG = {
-        "Abia":{LGA:{"Aba North":["Aba","Ogbor Hill"],"Aba South":["Aba","Ngwa Road"],"Umuahia North":["Umuahia","Ibeku"]}},
-        "Adamawa":{LGA:{"Yola North":["Yola","Jimeta"],"Yola South":["Yola","Mbamba"]}},
-        "Akwa Ibom":{LGA:{"Uyo":["Uyo","Ewet"],"Eket":["Eket","Ikot Udoma"]}},
-        "Anambra":{LGA:{"Awka South":["Awka","Amawbia"],"Onitsha North":["Onitsha","Fegge"]}},
-        "Bauchi":{LGA:{"Bauchi":["Bauchi","Tirwun"]}},
+      'use strict';
+      // ===== LOADING SCREEN =====
+      function createParticles() {
+        const container = document.getElementById('particlesContainer');
+        for (let i = 0; i < 30; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 6 + 's';
+          particle.style.animationDuration = (4 + Math.random() * 8) + 's';
+          particle.style.width = (2 + Math.random() * 4) + 'px';
+          particle.style.height = particle.style.width;
+          container.appendChild(particle);
+        }
+      }
+
+      function hideLoadingScreen() {
+        const loader = document.getElementById('loadingScreen');
+        setTimeout(() => {
+          loader.classList.add('hidden');
+        }, 2500);
+      }
+
+      // ===== NIGERIA DATA =====
+      const NG = Object.freeze({
+        "Abia":{LGA:{"Aba North":["Aba","Ogbor Hill"],"Aba South":["Aba"],"Umuahia North":["Umuahia"]}},
+        "Adamawa":{LGA:{"Yola North":["Yola","Jimeta"],"Yola South":["Yola"]}},
+        "Akwa Ibom":{LGA:{"Uyo":["Uyo","Ewet"],"Eket":["Eket"]}},
+        "Anambra":{LGA:{"Awka South":["Awka"],"Onitsha North":["Onitsha","Fegge"]}},
+        "Bauchi":{LGA:{"Bauchi":["Bauchi"]}},
         "Bayelsa":{LGA:{"Yenagoa":["Yenagoa","Swali"]}},
         "Benue":{LGA:{"Makurdi":["Makurdi","Wurukum"]}},
         "Borno":{LGA:{"Maiduguri":["Maiduguri","Bolori"]}},
-        "Cross River":{LGA:{"Calabar Municipal":["Calabar","Efut"]}},
-        "Delta":{LGA:{"Warri South":["Warri","Okere"],"Oshimili South":["Asaba","Oko"]}},
-        "Ebonyi":{LGA:{"Abakaliki":["Abakaliki","Kpiri-Kpiri"]}},
+        "Cross River":{LGA:{"Calabar Municipal":["Calabar"]}},
+        "Delta":{LGA:{"Warri South":["Warri","Okere"],"Oshimili South":["Asaba"]}},
+        "Ebonyi":{LGA:{"Abakaliki":["Abakaliki"]}},
         "Edo":{LGA:{"Oredo":["Benin City","King Square"]}},
-        "Ekiti":{LGA:{"Ado Ekiti":["Ado Ekiti","Odo Ado"]}},
-        "Enugu":{LGA:{"Enugu North":["Enugu","Independence Layout"],"Nsukka":["Nsukka","Opi"]}},
+        "Ekiti":{LGA:{"Ado Ekiti":["Ado Ekiti"]}},
+        "Enugu":{LGA:{"Enugu North":["Enugu"],"Nsukka":["Nsukka","Opi"]}},
         "FCT":{LGA:{"Municipal Area Council":["Abuja","Garki","Wuse","Maitama","Asokoro","Gwarinpa"],"Bwari":["Bwari","Kubwa"]}},
-        "Gombe":{LGA:{"Gombe":["Gombe","Tumfure"]}},
-        "Imo":{LGA:{"Owerri Municipal":["Owerri","Aladinma"],"Orlu":["Orlu","Umuna"]}},
-        "Jigawa":{LGA:{"Dutse":["Dutse","Kiyawa"]}},
-        "Kaduna":{LGA:{"Kaduna North":["Kaduna","Kawo"],"Zaria":["Zaria","Tudun Wada"]}},
-        "Kano":{LGA:{"Kano Municipal":["Kano","Fagge"],"Dala":["Dala","Kano"]}},
-        "Katsina":{LGA:{"Katsina":["Katsina","Batagarawa"]}},
-        "Kebbi":{LGA:{"Birnin Kebbi":["Birnin Kebbi","Gwandu"]}},
-        "Kogi":{LGA:{"Lokoja":["Lokoja","Ajaokuta"]}},
-        "Kwara":{LGA:{"Ilorin West":["Ilorin","Gambari"],"Offa":["Offa","Ilorin"]}},
+        "Gombe":{LGA:{"Gombe":["Gombe"]}},
+        "Imo":{LGA:{"Owerri Municipal":["Owerri"],"Orlu":["Orlu"]}},
+        "Jigawa":{LGA:{"Dutse":["Dutse"]}},
+        "Kaduna":{LGA:{"Kaduna North":["Kaduna","Kawo"],"Zaria":["Zaria"]}},
+        "Kano":{LGA:{"Kano Municipal":["Kano","Fagge"],"Dala":["Dala"]}},
+        "Katsina":{LGA:{"Katsina":["Katsina"]}},
+        "Kebbi":{LGA:{"Birnin Kebbi":["Birnin Kebbi"]}},
+        "Kogi":{LGA:{"Lokoja":["Lokoja"]}},
+        "Kwara":{LGA:{"Ilorin West":["Ilorin"],"Offa":["Offa"]}},
         "Lagos":{LGA:{"Ikeja":["Ikeja","Alausa","Opebi"],"Eti-Osa":["Victoria Island","Lekki","Ikoyi"],"Lagos Island":["Lagos Island","Marina"],"Surulere":["Surulere","Aguda"],"Kosofe":["Kosofe","Ketu"]}},
-        "Nasarawa":{LGA:{"Lafia":["Lafia","Doma"]}},
-        "Niger":{LGA:{"Minna":["Minna","Bosso"],"Suleja":["Suleja","Abuja"]}},
-        "Ogun":{LGA:{"Abeokuta South":["Abeokuta","Adatan"],"Sagamu":["Sagamu","Ikenne"]}},
-        "Ondo":{LGA:{"Akure South":["Akure","Oke Aro"],"Owo":["Owo","Akure"]}},
-        "Osun":{LGA:{"Osogbo":["Osogbo","Ede"],"Ile-Ife":["Ile-Ife","Osogbo"]}},
-        "Oyo":{LGA:{"Ibadan North":["Ibadan","Agodi","Mokola"],"Ogbomosho North":["Ogbomosho","Oyo"]}},
+        "Nasarawa":{LGA:{"Lafia":["Lafia"]}},
+        "Niger":{LGA:{"Minna":["Minna"],"Suleja":["Suleja"]}},
+        "Ogun":{LGA:{"Abeokuta South":["Abeokuta"],"Sagamu":["Sagamu"]}},
+        "Ondo":{LGA:{"Akure South":["Akure"],"Owo":["Owo"]}},
+        "Osun":{LGA:{"Osogbo":["Osogbo"],"Ile-Ife":["Ile-Ife"]}},
+        "Oyo":{LGA:{"Ibadan North":["Ibadan","Agodi","Mokola"],"Ogbomosho North":["Ogbomosho"]}},
         "Plateau":{LGA:{"Jos North":["Jos","Bukuru"]}},
-        "Rivers":{LGA:{"Port Harcourt":["Port Harcourt","Rumuokoro","Diobu"],"Obio/Akpor":["Port Harcourt","Rumuokoro"],"Eleme":["Eleme","Port Harcourt"]}},
-        "Sokoto":{LGA:{"Sokoto North":["Sokoto","Gwadabawa"]}},
-        "Taraba":{LGA:{"Jalingo":["Jalingo","Wukari"]}},
-        "Yobe":{LGA:{"Damaturu":["Damaturu","Gashua"]}},
-        "Zamfara":{LGA:{"Gusau":["Gusau","Talata Mafara"]}}
+        "Rivers":{LGA:{"Port Harcourt":["Port Harcourt","Rumuokoro","Diobu"],"Obio/Akpor":["Port Harcourt"],"Eleme":["Eleme"]}},
+        "Sokoto":{LGA:{"Sokoto North":["Sokoto"]}},
+        "Taraba":{LGA:{"Jalingo":["Jalingo"]}},
+        "Yobe":{LGA:{"Damaturu":["Damaturu"]}},
+        "Zamfara":{LGA:{"Gusau":["Gusau"]}}
+      });
+      const CITY_COORDS = {
+        "Lagos":{lat:6.5244,lng:3.3792},"Abuja":{lat:9.0579,lng:7.4951},"Kano":{lat:11.9998,lng:8.5265},"Port Harcourt":{lat:4.8156,lng:7.0498},"Ibadan":{lat:7.3775,lng:3.9470},"Benin City":{lat:6.3350,lng:5.6037},"Enugu":{lat:6.4584,lng:7.5464},"Kaduna":{lat:10.5105,lng:7.4165},"Aba":{lat:5.1130,lng:7.3667},"Ilorin":{lat:8.4966,lng:4.5427},"Jos":{lat:9.8965,lng:8.8583},"Maiduguri":{lat:11.8311,lng:13.1510},"Yola":{lat:9.2035,lng:12.4954},"Calabar":{lat:4.9517,lng:8.3220},"Uyo":{lat:5.0500,lng:7.9333},"Owerri":{lat:5.4833,lng:7.0333},"Akure":{lat:7.2500,lng:5.2000},"Abeokuta":{lat:7.1500,lng:3.3500},"Sokoto":{lat:13.0626,lng:5.2337},"Warri":{lat:5.5167,lng:5.7500},"Asaba":{lat:6.1833,lng:6.7500},"Onitsha":{lat:6.1667,lng:6.7833}
       };
-
       const SEARCH_INDEX = [];
       for (const [state, data] of Object.entries(NG)) {
-        SEARCH_INDEX.push({ type: 'State', state, lga: null, town: null, display: state, path: `${state} State` });
+        SEARCH_INDEX.push({type:'State',state,lga:null,town:null,display:state,path:`${state} State`});
         for (const [lga, towns] of Object.entries(data.LGA)) {
-          SEARCH_INDEX.push({ type: 'LGA', state, lga, town: null, display: lga, path: `${lga} LGA, ${state} State` });
-          for (const town of towns) {
-            SEARCH_INDEX.push({ type: 'Town/Village', state, lga, town, display: town, path: `${town}, ${lga} LGA, ${state} State` });
-          }
+          SEARCH_INDEX.push({type:'LGA',state,lga,town:null,display:lga,path:`${lga} LGA, ${state} State`});
+          for (const town of towns) SEARCH_INDEX.push({type:'Town',state,lga,town,display:town,path:`${town}, ${lga}, ${state}`});
         }
       }
       const ALL_STATES = Object.keys(NG);
 
-      const INFRA_LOGS = [
-        { id: "BS-1042", timestamp: "2026-07-19 08:23:11", agent: "A. Marek", state: "Lagos", lga: "Eti-Osa", town: "Victoria Island", infraType: "Tower", status: "Active", syncStatus: "synced", formComplete: true, syncTime: "08:23:15" },
-        { id: "BS-1043", timestamp: "2026-07-19 07:45:02", agent: "C. Obi", state: "FCT", lga: "Municipal Area Council", town: "Garki", infraType: "Data Center", status: "Completed", syncStatus: "synced", formComplete: true, syncTime: "07:45:08" },
-        { id: "BS-1044", timestamp: "2026-07-18 22:10:44", agent: "F. Nkosi", state: "Kano", lga: "Kano Municipal", town: "Kano", infraType: "Fiber Link", status: "Pending", syncStatus: "pending", formComplete: true, syncTime: null },
-        { id: "BS-1045", timestamp: "2026-07-18 19:30:18", agent: "L. Bello", state: "Rivers", lga: "Port Harcourt", town: "Diobu", infraType: "Power Grid", status: "Active", syncStatus: "failed", formComplete: false, syncTime: null },
-        { id: "BS-1046", timestamp: "2026-07-18 14:55:09", agent: "A. Marek", state: "Kaduna", lga: "Kaduna North", town: "Kawo", infraType: "Tower", status: "On Hold", syncStatus: "synced", formComplete: true, syncTime: "14:55:14" },
-        { id: "BS-1047", timestamp: "2026-07-17 11:12:33", agent: "Z. Adeola", state: "Oyo", lga: "Ibadan North", town: "Agodi", infraType: "Sensor Array", status: "Completed", syncStatus: "synced", formComplete: true, syncTime: "11:12:40" },
-        { id: "BS-1050", timestamp: "2026-07-16 12:30:07", agent: "L. Bello", state: "Lagos", lga: "Ikeja", town: "Alausa", infraType: "Data Center", status: "Active", syncStatus: "synced", formComplete: true, syncTime: "12:30:12" }
-      ];
+      // ===== APP STATE =====
+      const app = {
+        logs: [
+          {id:"BS-1042",timestamp:"2026-07-19T08:23:11.000Z",agent:"A. Marek",state:"Lagos",lga:"Eti-Osa",town:"Victoria Island",infraType:"Tower",status:"Active",syncStatus:"synced",formComplete:true,syncTime:"08:23:15",media:{photos:3,videos:1},gps:{lat:6.4281,lng:3.4215,alt:5.2,acc:2.8},notes:"Tower inspection completed"},
+          {id:"BS-1043",timestamp:"2026-07-19T07:45:02.000Z",agent:"C. Obi",state:"FCT",lga:"Municipal Area Council",town:"Garki",infraType:"Data Center",status:"Completed",syncStatus:"synced",formComplete:true,syncTime:"07:45:08",media:{photos:5,videos:0},gps:{lat:9.0579,lng:7.4951,alt:476,acc:1.5},notes:"All racks installed"},
+          {id:"BS-1044",timestamp:"2026-07-18T22:10:44.000Z",agent:"F. Nkosi",state:"Kano",lga:"Kano Municipal",town:"Kano",infraType:"Fiber Link",status:"Pending",syncStatus:"pending",formComplete:true,syncTime:null,media:{photos:2,videos:1},gps:{lat:11.9998,lng:8.5265,alt:488,acc:4.1},notes:""},
+          {id:"BS-1045",timestamp:"2026-07-18T19:30:18.000Z",agent:"L. Bello",state:"Rivers",lga:"Port Harcourt",town:"Diobu",infraType:"Power Grid",status:"Active",syncStatus:"failed",formComplete:false,syncTime:null,media:{photos:1,videos:0},gps:{lat:4.8156,lng:7.0498,alt:12.5,acc:3.2},notes:""}
+        ],
+        filters:{state:'',status:''},
+        location:null,
+        photos:0,videos:0,
+        customTypes:[],
+        activeView:'dashboard',
+        step:1,
+        networkLatency:0,
+        online:false,
+        syncCount:0,
+        secondsSinceSync:12,
+        gps:{lat:null,lng:null,alt:null,acc:null},
+        watchId:null,
+        miniMap:null,
+        expandedMap:null,
+        gisMap:null,
+        miniMapMarker:null,
+        expandedMapMarker:null,
+        darkMode:false
+      };
 
       const $ = id => document.getElementById(id);
-      const dashboardGrid = $('dashboardGrid'), sidebarPanel = $('sidebarPanel');
-      const sidebarToggle = $('sidebarToggle'), sidebarOpenFloating = $('sidebarOpenFloating');
-      const topBarSidebarToggle = $('topBarSidebarToggle');
-      const networkLatencyValue = $('networkLatencyValue'), latencyDot = $('latencyDot');
-      const serverStatus = $('serverStatus'), topSyncCount = $('topSyncCount'), lastSyncTime = $('lastSyncTime');
-      const stateFilter = $('stateFilter'), statusFilter = $('statusFilter'), statsRow = $('statsRow');
-      const ledgerBody = $('ledgerBody'), exportBtn = $('exportCsvBtn');
-      const infraType = $('infraType'), towerHeightGroup = $('towerHeightGroup'), fiberLengthGroup = $('fiberLengthGroup');
-      const targetState = $('targetState'), targetLGA = $('targetLGA'), targetTown = $('targetTown');
-      const locationSearch = $('locationSearch'), searchDropdown = $('searchDropdown');
-      const selectedLocationDisplay = $('selectedLocationDisplay'), locationChipText = $('locationChipText');
-      const clearLocation = $('clearLocation');
-      const completionBar = $('completionBar'), completionValue = $('completionValue');
-      const projectStatus = $('projectStatus'), agentNotes = $('agentNotes');
-      const capturePhotoBtn = $('capturePhotoBtn'), captureVideoBtn = $('captureVideoBtn');
-      const photoStatus = $('photoStatus'), videoStatus = $('videoStatus'), compressionNotice = $('compressionNotice');
-      const nextStepBtn = $('nextStepBtn'), prevStepBtn = $('prevStepBtn'), submitEntryBtn = $('submitEntryBtn');
-      const syncIndicator = $('syncIndicator'), syncCount = $('syncCount');
-      const currentLocation = $('currentLocation');
-      const toastContainer = $('toastContainer');
-      const checkType = $('checkType'), checkLocation = $('checkLocation'), checkStatus = $('checkStatus'), checkNotes = $('checkNotes');
-      const step1Content = $('step1Content'), step2Content = $('step2Content'), step3Content = $('step3Content');
-      const stepDot1 = $('stepDot1'), stepDot2 = $('stepDot2'), stepDot3 = $('stepDot3');
-      const stepLine1 = $('stepLine1'), stepLine2 = $('stepLine2');
-      const gpsLat = $('gpsLat'), gpsLng = $('gpsLng'), gpsAlt = $('gpsAlt'), gpsAcc = $('gpsAcc');
-      const refreshGPSBtn = $('refreshGPSBtn');
-      const reviewType = $('reviewType'), reviewLocation = $('reviewLocation'), reviewStatus = $('reviewStatus');
-      const reviewMedia = $('reviewMedia'), reviewCompletion = $('reviewCompletion');
-      const navItems = document.querySelectorAll('.nav-item');
-      const viewDashboard = $('viewDashboard'), viewFieldCapture = $('viewFieldCapture');
-      const viewRecords = $('viewRecords'), viewGIS = $('viewGIS');
+      const dom = {
+        loadingScreen:$('loadingScreen'),
+        menuOpenBtn:$('menuOpenBtn'),menuOverlay:$('menuOverlay'),
+        customMenuPanel:$('customMenuPanel'),menuCloseBtn:$('menuCloseBtn'),
+        latencyVal:$('networkLatencyValue'),latencyDot:$('latencyDot'),
+        connStatus:$('connectionStatus'),syncCountTop:$('topSyncCount'),lastSync:$('lastSyncTime'),
+        stateFilter:$('stateFilter'),statusFilter:$('statusFilter'),statsRow:$('statsRow'),
+        ledgerBody:$('ledgerBody'),exportBtn:$('exportCsvBtn'),syncAllBtn:$('syncAllBtn'),
+        infraType:$('infraType'),customGroup:$('customTypeGroup'),customInput:$('customInfraType'),
+        saveCustomBtn:$('saveCustomTypeBtn'),towerGroup:$('towerHeightGroup'),fiberGroup:$('fiberLengthGroup'),
+        targetState:$('targetState'),targetLGA:$('targetLGA'),targetTown:$('targetTown'),
+        locationSearch:$('locationSearch'),searchDropdown:$('searchDropdown'),
+        locationDisplay:$('selectedLocationDisplay'),locationChip:$('locationChipText'),
+        clearLocation:$('clearLocation'),compBar:$('completionBar'),compVal:$('completionValue'),
+        checkType:$('checkType'),checkLocation:$('checkLocation'),
+        projectStatus:$('projectStatus'),agentNotes:$('agentNotes'),
+        photoBtn:$('capturePhotoBtn'),videoBtn:$('captureVideoBtn'),
+        photoStatus:$('photoStatus'),videoStatus:$('videoStatus'),
+        compressNotice:$('compressionNotice'),mediaPreview:$('mediaPreviewArea'),
+        nextBtn:$('nextStepBtn'),prevBtn:$('prevStepBtn'),submitBtn:$('submitEntryBtn'),
+        syncCount:$('syncCount'),curLocation:$('currentLocation'),
+        toastContainer:$('toastContainer'),
+        step1:$('step1Content'),step2:$('step2Content'),step3:$('step3Content'),
+        dot1:$('stepDot1'),dot2:$('stepDot2'),dot3:$('stepDot3'),
+        line1:$('stepLine1'),line2:$('stepLine2'),
+        gpsLat:$('gpsLat'),gpsLng:$('gpsLng'),gpsAlt:$('gpsAlt'),gpsAcc:$('gpsAcc'),
+        refreshGPS:$('refreshGPSBtn'),
+        reviewType:$('reviewType'),reviewLoc:$('reviewLocation'),reviewStatus:$('reviewStatus'),
+        reviewMedia:$('reviewMedia'),reviewGPS:$('reviewGPS'),editEntry:$('editEntryBtn'),
+        miniMapContainer:$('miniMapContainer'),miniMapDiv:$('miniMap'),
+        expandedMapOverlay:$('expandedMapOverlay'),expandedMapBody:$('expandedMapBody'),
+        closeExpandedMap:$('closeExpandedMap'),
+        gisMapContainer:$('gisMapContainer'),
+        modalOverlay:$('modalOverlay'),modalContent:$('modalContent'),
+        recordsBody:$('recordsLedgerBody'),recordsSyncBtn:$('recordsSyncAllBtn'),
+        menuNavItems:document.querySelectorAll('.menu-nav-item'),
+        viewDash:$('viewDashboard'),viewCapture:$('viewFieldCapture'),
+        viewRecords:$('viewRecords'),viewGIS:$('viewGIS'),viewSettings:$('viewSettings'),
+        themeToggleBtn:$('themeToggleBtn'),appBody:document.getElementById('appBody')
+      };
 
-      let currentStateFilter = '', currentStatusFilter = '', photoCount = 0, videoCount = 0;
-      let pendingSyncCount = 3, activeView = 'dashboard', sidebarVisible = true;
-      let networkLatency = 32, secondsSinceLastSync = 12, selectedLocationData = null;
-      let currentStep = 1;
-      let gpsData = { lat: 4.8156, lng: 7.0498, alt: 12.5, acc: 3.2 };
+      // ===== HELPERS =====
+      const sanitize = str => str ? String(str).replace(/[<>"']/g,'').trim() : '';
+      const generateId = () => 'BS-' + Math.floor(1000 + Math.random() * 9000);
+      const formatTS = iso => { try { return new Date(iso).toLocaleString(); } catch(e){ return iso; } };
+      const statusClass = s => ({Active:'status-active',Completed:'status-completed',Pending:'status-pending','On Hold':'status-onhold'})[s]||'';
+      const syncClass = s => ({synced:'sync-synced',pending:'sync-pending',failed:'sync-failed',offline:'sync-offline'})[s]||'sync-offline';
+      const debounce = (fn, wait) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); }; };
 
-      // ============ SIDEBAR ============
-      function collapseSidebar() {
-        sidebarVisible = false;
-        dashboardGrid.classList.add('sidebar-collapsed');
-        dashboardGrid.classList.remove('icon-nav', 'mobile-stack');
-        dashboardGrid.style.gridTemplateColumns = '0px 1fr';
-        topBarSidebarToggle.style.display = 'flex';
-        topBarSidebarToggle.classList.remove('hidden-el');
-        sidebarOpenFloating.style.display = 'flex';
+      function toast(msg, warn) { const el = document.createElement('div'); el.className = 'toast' + (warn ? ' warning' : ''); el.textContent = msg; dom.toastContainer.appendChild(el); setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 2500); }
+      function getCoordsForLocation(state, lga, town) { if (town && CITY_COORDS[town]) return CITY_COORDS[town]; if (lga && CITY_COORDS[lga]) return CITY_COORDS[lga]; if (state && CITY_COORDS[state]) return CITY_COORDS[state]; return {lat:9.0820,lng:8.6753}; }
+
+      async function checkConnectivity() {
+        const start = performance.now();
+        let success = false, latency = 0;
+        try {
+          const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 3000);
+          await fetch('https://www.google.com/favicon.ico', {method:'HEAD',cache:'no-store',mode:'no-cors',signal:ctrl.signal});
+          latency = Math.round(performance.now() - start); success = true;
+        } catch(e) { try { const ctrl2 = new AbortController(); setTimeout(() => ctrl2.abort(), 3000); await fetch('https://httpbin.org/get', {signal:ctrl2.signal}); latency = Math.round(performance.now() - start); success = true; } catch(e2) { success = false; } }
+        app.online = success || navigator.onLine;
+        app.networkLatency = success ? Math.min(latency,999) : 0;
+        dom.latencyVal.textContent = app.online ? app.networkLatency + 'ms' : '---ms';
+        dom.latencyDot.className = 'latency-dot';
+        if (!app.online) { dom.latencyDot.classList.add('latency-offline'); dom.connStatus.textContent = 'Offline'; dom.connStatus.className = 'stat-value red'; }
+        else if (app.networkLatency < 50) { dom.latencyDot.classList.add('latency-low'); dom.connStatus.textContent = 'Online'; dom.connStatus.className = 'stat-value green'; }
+        else if (app.networkLatency < 150) { dom.latencyDot.classList.add('latency-medium'); dom.connStatus.textContent = 'Online'; dom.connStatus.className = 'stat-value green'; }
+        else { dom.latencyDot.classList.add('latency-high'); dom.connStatus.textContent = 'Slow'; dom.connStatus.className = 'stat-value amber'; }
       }
-      function expandSidebar() {
-        sidebarVisible = true;
-        dashboardGrid.classList.remove('sidebar-collapsed');
-        topBarSidebarToggle.style.display = 'none';
-        topBarSidebarToggle.classList.add('hidden-el');
-        sidebarOpenFloating.style.display = 'none';
-        applyLayout();
-      }
-      sidebarToggle.addEventListener('click', (e) => { e.stopPropagation(); collapseSidebar(); });
-      sidebarOpenFloating.addEventListener('click', (e) => { e.stopPropagation(); expandSidebar(); });
-      topBarSidebarToggle.addEventListener('click', (e) => { e.stopPropagation(); expandSidebar(); });
 
-      function applyLayout() {
-        if (!sidebarVisible) return;
-        const width = window.innerWidth;
-        dashboardGrid.classList.remove('icon-nav', 'mobile-stack', 'sidebar-collapsed');
-        topBarSidebarToggle.style.display = 'none';
-        sidebarOpenFloating.style.display = 'none';
-        if (width >= 1200) {
-          dashboardGrid.style.gridTemplateColumns = 'var(--sidebar-width) 1fr';
-        } else if (width >= 768 && width < 1200) {
-          dashboardGrid.classList.add('icon-nav');
-          dashboardGrid.style.gridTemplateColumns = 'var(--icon-track-width) 1fr';
-        } else {
-          dashboardGrid.classList.add('mobile-stack');
-          dashboardGrid.style.gridTemplateColumns = '1fr';
+      // ===== MAP FUNCTIONS =====
+      function initMiniMap() {
+        if (app.miniMap) return;
+        const coords = getCoordsForLocation(app.location?.state||'Lagos', app.location?.lga, app.location?.town);
+        app.miniMap = L.map(dom.miniMapDiv, {center:[coords.lat,coords.lng],zoom:13,zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false});
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(app.miniMap);
+        app.miniMapMarker = L.marker([coords.lat,coords.lng],{draggable:false}).addTo(app.miniMap);
+        dom.miniMapContainer.addEventListener('click', expandMap);
+      }
+      function updateMiniMapPosition() {
+        if (!app.miniMap) { initMiniMap(); return; }
+        const coords = getCoordsForLocation(app.location?.state, app.location?.lga, app.location?.town);
+        app.miniMap.setView([coords.lat,coords.lng],13,{animate:true});
+        app.miniMapMarker.setLatLng([coords.lat,coords.lng]);
+      }
+      function expandMap() {
+        dom.expandedMapOverlay.classList.remove('hidden-el');
+        if (app.expandedMap) { app.expandedMap.remove(); app.expandedMap = null; }
+        const coords = getCoordsForLocation(app.location?.state, app.location?.lga, app.location?.town);
+        app.expandedMap = L.map(dom.expandedMapBody, {center:[coords.lat,coords.lng],zoom:15,zoomControl:true});
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(app.expandedMap);
+        app.expandedMapMarker = L.marker([coords.lat,coords.lng],{draggable:true}).addTo(app.expandedMap);
+        setTimeout(() => app.expandedMap.invalidateSize(), 300);
+      }
+      function closeExpandedMap() {
+        dom.expandedMapOverlay.classList.add('hidden-el');
+        if (app.expandedMap) { app.expandedMap.remove(); app.expandedMap = null; }
+      }
+      function cleanupGISMap() {
+        if (app.gisMap) {
+          app.gisMap.remove();
+          app.gisMap = null;
         }
+        dom.gisMapContainer.innerHTML = '';
+        const newContainer = document.createElement('div');
+        newContainer.id = 'gisMapContainer';
+        newContainer.className = 'gis-map-wrapper';
+        newContainer.style.width = '100%';
+        newContainer.style.height = '100%';
+        dom.gisMapContainer.parentNode.replaceChild(newContainer, dom.gisMapContainer);
+        dom.gisMapContainer = newContainer;
       }
-
-      sidebarPanel.addEventListener('click', function(e) {
-        if (window.innerWidth < 768 && dashboardGrid.classList.contains('mobile-stack') && sidebarVisible) {
-          sidebarPanel.classList.toggle('expanded');
-        }
-      });
-
-      // ============ NETWORK ============
-      function updateNetworkLatency() {
-        networkLatency = Math.max(8, Math.min(250, networkLatency + Math.floor(Math.random() * 15) - 5));
-        networkLatencyValue.textContent = networkLatency + 'ms';
-        latencyDot.classList.remove('latency-low', 'latency-medium', 'latency-high', 'latency-offline');
-        if (networkLatency < 50) latencyDot.classList.add('latency-low');
-        else if (networkLatency < 120) latencyDot.classList.add('latency-medium');
-        else if (networkLatency < 250) latencyDot.classList.add('latency-high');
-        else latencyDot.classList.add('latency-offline');
-        serverStatus.textContent = networkLatency > 200 ? 'Degraded' : 'Online';
-        serverStatus.className = networkLatency > 200 ? 'font-mono text-amber-400' : 'font-mono text-emerald-400';
+      function initGISMap() {
+        if (app.gisMap) return;
+        dom.gisMapContainer.innerHTML = '';
+        app.gisMap = L.map(dom.gisMapContainer, {center:[9.0820,8.6753],zoom:6});
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(app.gisMap);
+        updateGISMarkers();
+        setTimeout(() => app.gisMap.invalidateSize(), 100);
       }
-      function updateSyncCounter() {
-        topSyncCount.textContent = pendingSyncCount;
-        topSyncCount.className = pendingSyncCount > 0 ? 'font-mono text-amber-400' : 'font-mono text-emerald-400';
-        lastSyncTime.textContent = secondsSinceLastSync + 's';
-      }
-
-      // ============ VIEW SWITCHING ============
-      function switchView(viewName) {
-        activeView = viewName;
-        [viewDashboard, viewFieldCapture, viewRecords, viewGIS].forEach(v => v.classList.remove('active'));
-        const map = { dashboard: viewDashboard, fieldCapture: viewFieldCapture, records: viewRecords, gis: viewGIS };
-        if (map[viewName]) map[viewName].classList.add('active');
-        navItems.forEach(item => {
-          item.classList.remove('active', 'bg-blue-600/20', 'text-blue-300');
-          if (item.dataset.view === viewName) item.classList.add('active', 'bg-blue-600/20', 'text-blue-300');
+      function updateGISMarkers() {
+        if (!app.gisMap) return;
+        app.gisMap.eachLayer(l => { if (l instanceof L.Marker) app.gisMap.removeLayer(l); });
+        app.logs.forEach(log => {
+          const coords = getCoordsForLocation(log.state, log.lga, log.town);
+          L.marker([coords.lat,coords.lng]).bindPopup(`<div style="font-family:system-ui,sans-serif;font-size:12px;"><strong>${sanitize(log.id)}</strong><br>${sanitize(log.infraType)}<br>${sanitize([log.town,log.lga,log.state].filter(Boolean).join(', '))}<br><span style="color:${log.status==='Active'?'#10b981':log.status==='Completed'?'#3b82f6':'#f59e0b'}">${log.status}</span></div>`).addTo(app.gisMap);
         });
-        if (viewName === 'dashboard') refreshDashboard();
-        if (viewName === 'fieldCapture') { updateFormChecklist(); updateStepUI(); }
       }
-      navItems.forEach(item => item.addEventListener('click', () => switchView(item.dataset.view)));
 
-      // ============ STEPS ============
-      function updateStepUI() {
-        step1Content.classList.add('hidden-el');
-        step2Content.classList.add('hidden-el');
-        step3Content.classList.add('hidden-el');
-        prevStepBtn.classList.add('hidden-el');
-        nextStepBtn.classList.add('hidden-el');
-        submitEntryBtn.classList.add('hidden-el');
-
-        if (currentStep === 1) {
-          step1Content.classList.remove('hidden-el');
-          nextStepBtn.classList.remove('hidden-el');
-          nextStepBtn.textContent = 'Next: Media Capture ▶';
-        } else if (currentStep === 2) {
-          step2Content.classList.remove('hidden-el');
-          prevStepBtn.classList.remove('hidden-el');
-          nextStepBtn.classList.remove('hidden-el');
-          nextStepBtn.textContent = 'Next: Review ▶';
-        } else if (currentStep === 3) {
-          step3Content.classList.remove('hidden-el');
-          prevStepBtn.classList.remove('hidden-el');
-          submitEntryBtn.classList.remove('hidden-el');
-          updateReviewSummary();
+      // ===== GPS =====
+      function startGPS() {
+        if (!navigator.geolocation) { dom.curLocation.textContent = 'GPS not available'; return; }
+        app.watchId = navigator.geolocation.watchPosition(
+          pos => { app.gps.lat = pos.coords.latitude.toFixed(6); app.gps.lng = pos.coords.longitude.toFixed(6); app.gps.alt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : 'N/A'; app.gps.acc = pos.coords.accuracy.toFixed(1); dom.curLocation.textContent = `Lat ${app.gps.lat}, Lng ${app.gps.lng}`; if (app.activeView === 'fieldCapture' && app.step === 3) updateGPSDisplay(); },
+          err => { dom.curLocation.textContent = 'GPS signal weak'; },
+          {enableHighAccuracy:true,maximumAge:30000,timeout:15000}
+        );
+      }
+      function stopGPS() { if (app.watchId !== null && navigator.geolocation) { navigator.geolocation.clearWatch(app.watchId); app.watchId = null; } }
+      function refreshGPSNow() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            pos => { app.gps.lat = pos.coords.latitude.toFixed(6); app.gps.lng = pos.coords.longitude.toFixed(6); app.gps.alt = pos.coords.altitude ? pos.coords.altitude.toFixed(1) : 'N/A'; app.gps.acc = pos.coords.accuracy.toFixed(1); updateGPSDisplay(); toast('📍 GPS updated'); },
+            () => toast('⚠️ GPS refresh failed', true),
+            {enableHighAccuracy:true,timeout:10000}
+          );
         }
-
-        // Update step dots
-        [stepDot1, stepDot2, stepDot3].forEach(d => { d.classList.remove('active', 'completed'); });
-        [stepLine1, stepLine2].forEach(l => l.classList.remove('completed'));
-
-        if (currentStep >= 1) { stepDot1.classList.add('completed'); stepLine1.classList.add('completed'); }
-        if (currentStep >= 2) { stepDot2.classList.add('completed'); stepLine2.classList.add('completed'); }
-        if (currentStep === 1) { stepDot1.classList.add('active'); stepDot1.classList.remove('completed'); stepLine1.classList.remove('completed'); }
-        if (currentStep === 2) { stepDot2.classList.add('active'); stepDot2.classList.remove('completed'); stepLine2.classList.remove('completed'); }
-        if (currentStep === 3) { stepDot3.classList.add('active'); stepDot3.classList.remove('completed'); }
+      }
+      function updateGPSDisplay() {
+        dom.gpsLat.textContent = app.gps.lat || '--'; dom.gpsLng.textContent = app.gps.lng || '--';
+        dom.gpsAlt.textContent = (app.gps.alt || '--') + (app.gps.alt && app.gps.alt !== 'N/A' ? 'm' : '');
+        dom.gpsAcc.textContent = '±' + (app.gps.acc || '--') + 'm';
+        dom.reviewGPS.textContent = app.gps.lat ? `${app.gps.lat}, ${app.gps.lng}` : '--';
       }
 
-      function goToStep(step) {
-        if (step === 2) {
-          if (!infraType.value) { showToast('⚠️ Please select Infrastructure Type first', true); return; }
-          if (!selectedLocationData || !selectedLocationData.state) { showToast('⚠️ Please select a State and LGA first', true); return; }
+      // ===== MENU FUNCTIONS =====
+      function openMenu() { dom.customMenuPanel.classList.add('active'); dom.menuOverlay.classList.add('active'); }
+      function closeMenu() { dom.customMenuPanel.classList.remove('active'); dom.menuOverlay.classList.remove('active'); }
+
+      // ===== VIEW SWITCHING =====
+      function switchView(name) {
+        if (app.activeView === 'gis' && name !== 'gis') {
+          cleanupGISMap();
         }
-        if (step === 3 && (photoCount + videoCount) === 0) {
-          showToast('⚠️ Please capture at least one media file', true);
-          return;
-        }
-        currentStep = Math.max(1, Math.min(3, step));
-        updateStepUI();
-        if (currentStep === 3) { refreshGPS(); updateReviewSummary(); }
+        app.activeView = name;
+        [dom.viewDash, dom.viewCapture, dom.viewRecords, dom.viewGIS, dom.viewSettings].forEach(v => v.classList.remove('active'));
+        const map = {dashboard:dom.viewDash, fieldCapture:dom.viewCapture, records:dom.viewRecords, gis:dom.viewGIS, settings:dom.viewSettings};
+        if (map[name]) map[name].classList.add('active');
+        dom.menuNavItems.forEach(item => { item.classList.remove('active'); if (item.dataset.view === name) item.classList.add('active'); });
+        if (name !== 'fieldCapture') stopGPS(); else startGPS();
+        if (name === 'dashboard') refreshDashboard();
+        if (name === 'fieldCapture') { updateChecklist(); updateStepUI(); if (!app.miniMap) setTimeout(initMiniMap,500); else setTimeout(() => app.miniMap.invalidateSize(),300); }
+        if (name === 'records') renderRecords();
+        if (name === 'gis') { setTimeout(initGISMap, 300); }
+        closeMenu();
       }
 
-      nextStepBtn.addEventListener('click', () => goToStep(currentStep + 1));
-      prevStepBtn.addEventListener('click', () => goToStep(currentStep - 1));
+      // ===== DASHBOARD =====
+      function filtered() { return app.logs.filter(l => (app.filters.state === '' || l.state === app.filters.state) && (app.filters.status === '' || l.status === app.filters.status)); }
+      function renderStats(f) {
+        const t = f.length, c = f.filter(l=>l.status==='Completed').length, sy = f.filter(l=>l.syncStatus==='synced').length;
+        dom.statsRow.innerHTML = [
+          {label:'Total Entries',value:t,icon:'📋'},
+          {label:'Completion',value:t?((c/t)*100).toFixed(1)+'%':'0%',icon:'✅'},
+          {label:'Synced',value:t?((sy/t)*100).toFixed(1)+'%':'0%',icon:'🔄'}
+        ].map(c => `<div class="stat-card"><span class="text-secondary text-[10px] uppercase tracking-wider">${c.icon} ${c.label}</span><span class="text-xl md:text-2xl font-bold" style="color:var(--text-primary);">${c.value}</span></div>`).join('');
+      }
+      function renderLedger(f) {
+        if (!f.length) { dom.ledgerBody.innerHTML = '<div class="flex items-center justify-center h-full text-xs p-4" style="color:var(--text-muted);">No entries match filters.</div>'; return; }
+        const mobile = window.innerWidth < 768;
+        dom.ledgerBody.innerHTML = f.map(l => {
+          const loc = [l.town, l.lga, l.state].filter(Boolean).join(', ');
+          if (mobile) return `<div class="ledger-row"><div class="ledger-cell" data-label="ID"><span class="font-mono text-blue-600">${sanitize(l.id)}</span></div><div class="ledger-cell" data-label="Time"><span style="color:var(--text-secondary);">${formatTS(l.timestamp)}</span></div><div class="ledger-cell" data-label="Agent"><span style="color:var(--text-primary);">${sanitize(l.agent)}</span></div><div class="ledger-cell" data-label="Location"><span style="color:var(--text-secondary);">${sanitize(loc)}</span></div><div class="ledger-cell" data-label="Type"><span>${sanitize(l.infraType)}</span></div><div class="ledger-cell" data-label="Status"><span class="status-pill ${statusClass(l.status)}">${l.status}</span></div><div class="ledger-cell" data-label="Sync"><span class="status-pill ${syncClass(l.syncStatus)}">${l.syncStatus}</span></div><div><button class="text-blue-600 text-xs view-btn" data-id="${l.id}">🔍 View</button></div></div>`;
+          return `<div class="grid items-center px-2 py-2 border-b text-[10px] hover:bg-card/50" style="grid-template-columns:70px 1.2fr 1fr 1.3fr 100px 90px 85px 70px 70px;border-color:var(--border-color);"><span class="font-mono text-blue-600">${sanitize(l.id)}</span><span class="truncate-text px-1" style="color:var(--text-secondary);">${formatTS(l.timestamp)}</span><span class="truncate-text px-1" style="color:var(--text-primary);">${sanitize(l.agent)}</span><span class="truncate-text px-1" style="color:var(--text-secondary);">${sanitize(loc)}</span><span class="truncate-text px-1">${sanitize(l.infraType)}</span><span class="flex justify-center"><span class="status-pill ${statusClass(l.status)}">${l.status}</span></span><span class="flex justify-center"><span class="status-pill ${syncClass(l.syncStatus)}">${l.syncStatus}</span></span><span class="flex justify-center"><span class="status-pill ${l.formComplete?'form-complete':'form-incomplete'}">${l.formComplete?'✓':'✗'}</span></span><span class="flex justify-center"><button class="text-blue-600 hover:text-blue-700 view-btn" data-id="${l.id}">🔍</button></span></div>`;
+        }).join('');
+        document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', function() { const log = app.logs.find(l => l.id === this.dataset.id); if (log) showDetailModal(log); }));
+      }
+      function refreshDashboard() { const f = filtered(); renderStats(f); renderLedger(f); updateSyncCounter(); }
+      function updateSyncCounter() {
+        app.syncCount = app.logs.filter(l => l.syncStatus === 'pending' || l.syncStatus === 'failed').length;
+        dom.syncCountTop.textContent = app.syncCount;
+        dom.syncCountTop.className = 'stat-value ' + (app.syncCount > 0 ? 'amber' : 'green');
+        dom.syncCount.textContent = app.syncCount;
+        dom.lastSync.textContent = app.secondsSinceSync + 's ago';
+        if (app.syncCount > 0) dom.syncAllBtn.classList.remove('hidden-el');
+        else dom.syncAllBtn.classList.add('hidden-el');
+      }
+      function syncAll() {
+        const pending = app.logs.filter(l => l.syncStatus === 'pending' || l.syncStatus === 'failed');
+        if (!pending.length) { toast('No pending entries', true); return; }
+        if (!app.online) { toast('⚠️ Offline - cannot sync', true); return; }
+        toast(`Syncing ${pending.length} entries...`);
+        pending.forEach((entry, i) => {
+          setTimeout(() => {
+            if (app.online) { entry.syncStatus = 'synced'; entry.syncTime = new Date().toTimeString().slice(0,8); }
+            if (i === pending.length - 1) { updateSyncCounter(); refreshDashboard(); renderRecords(); toast('✅ All synced'); }
+          }, i * 500);
+        });
+      }
+      function renderRecords() {
+        if (!app.logs.length) { dom.recordsBody.innerHTML = '<div class="text-center p-8" style="color:var(--text-muted);">No entries yet</div>'; return; }
+        dom.recordsBody.innerHTML = app.logs.map(l => `
+          <div class="bg-card/60 rounded-xl p-3 md:p-4 mb-3 border" style="border-color:var(--border-color);">
+            <div class="flex items-center justify-between mb-2"><span class="font-mono text-blue-600 text-xs">${sanitize(l.id)}</span><span class="text-[10px]" style="color:var(--text-muted);">🔒 ${formatTS(l.timestamp)}</span></div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div><span style="color:var(--text-muted);">Agent:</span> <span style="color:var(--text-primary);">${sanitize(l.agent)}</span></div>
+              <div><span style="color:var(--text-muted);">Type:</span> <span style="color:var(--text-primary);">${sanitize(l.infraType)}</span></div>
+              <div><span style="color:var(--text-muted);">Location:</span> <span style="color:var(--text-primary);">${sanitize([l.town,l.lga,l.state].filter(Boolean).join(', '))}</span></div>
+              <div><span style="color:var(--text-muted);">Status:</span> <span class="status-pill ${statusClass(l.status)}">${l.status}</span></div>
+              <div><span style="color:var(--text-muted);">Sync:</span> <span class="status-pill ${syncClass(l.syncStatus)}">${l.syncStatus}</span></div>
+              <div><span style="color:var(--text-muted);">Media:</span> <span style="color:var(--text-primary);">${l.media.photos}📸 ${l.media.videos}🎥</span></div>
+            </div>
+            <div class="flex gap-2 mt-3 pt-2 border-t" style="border-color:var(--border-color);">
+              <button class="text-blue-600 text-xs hover:text-blue-700 detail-btn" data-id="${l.id}">🔍 View</button>
+            </div>
+          </div>`).join('');
+        document.querySelectorAll('.detail-btn').forEach(b => b.addEventListener('click', function() { const log = app.logs.find(l => l.id === this.dataset.id); if (log) showDetailModal(log); }));
+      }
+      function showDetailModal(log) {
+        dom.modalContent.innerHTML = `<div class="flex items-center justify-between mb-4"><h3 class="font-semibold text-lg" style="color:var(--text-primary);">Entry ${sanitize(log.id)}</h3><button id="closeModal" class="hover:text-primary text-2xl leading-none" style="color:var(--text-muted);">✕</button></div><div class="space-y-2 text-sm">${['Timestamp:🔒 '+formatTS(log.timestamp),'Agent:'+sanitize(log.agent),'Infrastructure:'+sanitize(log.infraType),'Location:'+sanitize([log.town,log.lga,log.state].filter(Boolean).join(', ')),'Status:'+log.status,'Sync:'+log.syncStatus,'GPS:'+log.gps.lat+', '+log.gps.lng,'Media:'+log.media.photos+' photos, '+log.media.videos+' videos'].map(s => `<div class="flex justify-between py-1 border-b" style="border-color:var(--border-color);"><span style="color:var(--text-muted);">${s.split(':')[0]}</span><span style="color:var(--text-primary);">${s.split(':').slice(1).join(':')}</span></div>`).join('')}</div>`;
+        dom.modalOverlay.classList.remove('hidden-el');
+        document.getElementById('closeModal').addEventListener('click', () => dom.modalOverlay.classList.add('hidden-el'));
+      }
+      function exportCSV() {
+        const f=filtered();if(!f.length){toast('No data',true);return;}
+        const csv=[['ID','Timestamp','Agent','State','LGA','Town','Infra Type','Status','Sync','GPS Lat','GPS Lng','Notes'].join(',')];
+        f.forEach(l=>csv.push([l.id,l.timestamp,sanitize(l.agent),l.state,l.lga||'',l.town||'',sanitize(l.infraType),l.status,l.syncStatus,l.gps.lat,l.gps.lng,sanitize(l.notes)||''].map(c=>`"${c}"`).join(',')));
+        const blob=new Blob([csv.join('\n')],{type:'text/csv'});const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);a.download=`blacksurvey_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);toast('📥 CSV exported');
+      }
+      function toggleTheme() {
+        app.darkMode = !app.darkMode;
+        dom.appBody.classList.toggle('dark-theme', app.darkMode);
+        toast(app.darkMode ? '🌙 Dark mode enabled' : '☀️ Light mode enabled');
+      }
 
-      // ============ GPS ============
-      function refreshGPS() {
-        gpsData.lat = (4.8156 + Math.random() * 0.03).toFixed(5);
-        gpsData.lng = (7.0498 + Math.random() * 0.03).toFixed(5);
-        gpsData.alt = (10 + Math.random() * 20).toFixed(1);
-        gpsData.acc = (1 + Math.random() * 5).toFixed(1);
-        gpsLat.textContent = gpsData.lat;
-        gpsLng.textContent = gpsData.lng;
-        gpsAlt.textContent = gpsData.alt + 'm';
-        gpsAcc.textContent = '±' + gpsData.acc + 'm';
-        currentLocation.textContent = `Lat ${gpsData.lat}, Lng ${gpsData.lng}`;
+      // ===== FIELD CAPTURE =====
+      function populateStates() {
+        dom.stateFilter.innerHTML = '<option value="">All States (37)</option>';
+        dom.targetState.innerHTML = '<option value="">-- Select State --</option>';
+        ALL_STATES.forEach(s => { dom.stateFilter.innerHTML += `<option value="${s}">${s}</option>`; dom.targetState.innerHTML += `<option value="${s}">${s}</option>`; });
       }
-      refreshGPSBtn.addEventListener('click', refreshGPS);
-
-      function updateReviewSummary() {
-        reviewType.textContent = infraType.value ? infraType.options[infraType.selectedIndex].text : '-';
-        reviewLocation.textContent = selectedLocationData ? [selectedLocationData.town, selectedLocationData.lga, selectedLocationData.state].filter(Boolean).join(', ') : '-';
-        reviewStatus.textContent = projectStatus.value;
-        reviewMedia.textContent = `${photoCount} photos, ${videoCount} videos`;
-        const pct = calculateCompletion();
-        reviewCompletion.textContent = pct + '%';
+      function populateLGAs(stateName) {
+        dom.targetLGA.disabled = false;
+        dom.targetLGA.innerHTML = '<option value="">-- Select LGA --</option>';
+        if (NG[stateName]) Object.keys(NG[stateName].LGA).forEach(l => dom.targetLGA.innerHTML += `<option value="${l}">${l}</option>`);
+        dom.targetTown.disabled = true; dom.targetTown.innerHTML = '<option value="">Select LGA first</option>';
       }
-
-      // ============ SEARCH ============
-      function searchLocations(query) {
-        if (!query || query.trim().length < 2) return [];
-        const q = query.toLowerCase().trim();
-        return SEARCH_INDEX.filter(item =>
-          item.display.toLowerCase().includes(q) || item.state.toLowerCase().includes(q) ||
-          (item.lga && item.lga.toLowerCase().includes(q)) || item.path.toLowerCase().includes(q)
-        ).slice(0, 20);
+      function populateTowns(stateName, lga) {
+        dom.targetTown.disabled = false;
+        dom.targetTown.innerHTML = '<option value="">-- Select Town --</option>';
+        if (NG[stateName]?.LGA[lga]) NG[stateName].LGA[lga].forEach(t => dom.targetTown.innerHTML += `<option value="${t}">${t}</option>`);
       }
-      function highlightMatch(text, query) {
-        if (!query || query.length < 2) return text;
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
-      }
-      function renderSearchResults(results) {
-        if (!results || results.length === 0) {
-          searchDropdown.innerHTML = '<div class="no-results">No locations found</div>';
-          searchDropdown.classList.add('active');
-          return;
-        }
-        const query = locationSearch.value.toLowerCase().trim();
-        searchDropdown.innerHTML = results.map(item => `
-          <div class="search-dropdown-item" data-state="${item.state}" data-lga="${item.lga||''}" data-town="${item.town||''}">
-            <span class="location-type">${item.type}</span>
-            <span class="location-name">${highlightMatch(item.display, query)}</span>
-            <span class="location-path">${highlightMatch(item.path, query)}</span>
-          </div>
-        `).join('');
-        searchDropdown.classList.add('active');
-      }
-      function selectLocation(state, lga, town) {
-        targetState.value = state;
-        populateLGAs(state);
-        targetLGA.value = lga || '';
-        if (lga) { populateTowns(state, lga); targetTown.value = town || ''; }
-        selectedLocationData = { state, lga, town };
-        updateLocationDisplay();
-        updateFormChecklist();
-        searchDropdown.classList.remove('active');
-        locationSearch.value = '';
+      function selectLocation(stateName, lga, town) {
+        dom.targetState.value = stateName; populateLGAs(stateName);
+        dom.targetLGA.value = lga||''; if(lga){populateTowns(stateName,lga);dom.targetTown.value=town||'';}
+        app.location={state:stateName,lga,town};updateLocationDisplay();updateChecklist();
+        updateMiniMapPosition();
+        dom.searchDropdown.classList.remove('active');dom.locationSearch.value='';
       }
       function updateLocationDisplay() {
-        if (selectedLocationData && selectedLocationData.state) {
-          const parts = [];
-          if (selectedLocationData.town) parts.push(selectedLocationData.town);
-          if (selectedLocationData.lga) parts.push(selectedLocationData.lga + ' LGA');
-          parts.push(selectedLocationData.state + ' State');
-          locationChipText.textContent = parts.join(', ');
-          selectedLocationDisplay.classList.remove('hidden-el');
-        } else {
-          selectedLocationDisplay.classList.add('hidden-el');
-        }
+        if(app.location?.state){dom.locationChip.textContent=[app.location.town,app.location.lga,app.location.state].filter(Boolean).join(', ');dom.locationDisplay.classList.remove('hidden-el');}
+        else{dom.locationDisplay.classList.add('hidden-el');}
       }
-      function clearLocationSelection() {
-        selectedLocationData = null;
-        targetState.value = ''; targetLGA.value = ''; targetTown.value = '';
-        targetLGA.disabled = true; targetTown.disabled = true;
-        targetLGA.innerHTML = '<option value="">Select state first</option>';
-        targetTown.innerHTML = '<option value="">Select LGA first</option>';
-        selectedLocationDisplay.classList.add('hidden-el');
-        updateFormChecklist();
+      function clearLocation() {
+        app.location=null;dom.targetState.value='';dom.targetLGA.value='';dom.targetTown.value='';
+        dom.targetLGA.disabled=true;dom.targetTown.disabled=true;
+        dom.targetLGA.innerHTML='<option value="">Select state first</option>';
+        dom.targetTown.innerHTML='<option value="">Select LGA first</option>';
+        dom.locationDisplay.classList.add('hidden-el');updateChecklist();
+        updateMiniMapPosition();
       }
-
-      searchDropdown.addEventListener('click', function(e) {
-        const item = e.target.closest('.search-dropdown-item');
-        if (item) selectLocation(item.dataset.state, item.dataset.lga, item.dataset.town);
-      });
-      locationSearch.addEventListener('input', function() {
-        renderSearchResults(searchLocations(this.value));
-      });
-      locationSearch.addEventListener('focus', function() {
-        if (this.value.trim().length >= 2) renderSearchResults(searchLocations(this.value));
-      });
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('.location-search-wrapper')) searchDropdown.classList.remove('active');
-      });
-      clearLocation.addEventListener('click', clearLocationSelection);
-
-      // ============ CASCADING DROPDOWNS ============
-      function populateStates() {
-        stateFilter.innerHTML = '<option value="">All States (37)</option>';
-        targetState.innerHTML = '<option value="">-- Select State --</option>';
-        ALL_STATES.forEach(s => {
-          stateFilter.innerHTML += `<option value="${s}">${s}</option>`;
-          targetState.innerHTML += `<option value="${s}">${s}</option>`;
-        });
+      function calcCompletion() { let p=0;if(dom.infraType.value)p++;if(app.location?.state)p++;return Math.round((p/2)*100); }
+      function updateChecklist() {
+        const t=dom.infraType.value!=='',l=!!(app.location?.state);
+        dom.checkType.textContent=t?'✅':'❌';dom.checkType.className=t?'text-emerald-600':'text-red-500';
+        dom.checkLocation.textContent=l?'✅':'❌';dom.checkLocation.className=l?'text-emerald-600':'text-red-500';
+        const pct=calcCompletion();dom.compVal.textContent=pct+'%';dom.compBar.style.width=pct+'%';
       }
-      function populateLGAs(state) {
-        targetLGA.disabled = false;
-        targetLGA.innerHTML = '<option value="">-- Select LGA --</option>';
-        if (NG[state]) {
-          Object.keys(NG[state].LGA).forEach(lga => {
-            targetLGA.innerHTML += `<option value="${lga}">${lga}</option>`;
-          });
-        }
-        targetTown.disabled = true;
-        targetTown.innerHTML = '<option value="">Select LGA first</option>';
+      function handleInfraChange() {
+        dom.customGroup.classList.add('hidden-el');dom.towerGroup.classList.add('conditional-hidden');dom.fiberGroup.classList.add('conditional-hidden');
+        if(dom.infraType.value==='custom')dom.customGroup.classList.remove('hidden-el');
+        else if(dom.infraType.value==='tower')dom.towerGroup.classList.remove('conditional-hidden');
+        else if(dom.infraType.value==='fiber')dom.fiberGroup.classList.remove('conditional-hidden');
+        updateChecklist();
       }
-      function populateTowns(state, lga) {
-        targetTown.disabled = false;
-        targetTown.innerHTML = '<option value="">-- Select Town --</option>';
-        if (NG[state] && NG[state].LGA[lga]) {
-          NG[state].LGA[lga].forEach(town => {
-            targetTown.innerHTML += `<option value="${town}">${town}</option>`;
-          });
-        }
+      function saveCustomType() {
+        const val=dom.customInput.value.trim();
+        if(!val){toast('⚠️ Enter type name',true);return;}
+        if(app.customTypes.includes(val)){toast('⚠️ Already exists',true);return;}
+        app.customTypes.push(val);
+        const opt=document.createElement('option');
+        opt.value='custom-'+val.toLowerCase().replace(/\s+/g,'-');opt.textContent='📝 '+val;opt.dataset.custom='true';
+        dom.infraType.insertBefore(opt,dom.infraType.querySelector('option[value="custom"]'));
+        dom.infraType.value=opt.value;dom.customGroup.classList.add('hidden-el');dom.customInput.value='';
+        updateChecklist();toast('✅ Custom type saved');
       }
-      targetState.addEventListener('change', function() {
-        const v = this.value;
-        if (v) { populateLGAs(v); selectedLocationData = { state: v, lga: null, town: null }; }
-        else { targetLGA.disabled = true; targetTown.disabled = true; targetLGA.innerHTML = '<option value="">Select state first</option>'; targetTown.innerHTML = '<option value="">Select LGA first</option>'; selectedLocationData = null; }
-        updateLocationDisplay(); updateFormChecklist();
-      });
-      targetLGA.addEventListener('change', function() {
-        const st = targetState.value, v = this.value;
-        if (st && v) { populateTowns(st, v); selectedLocationData = { state: st, lga: v, town: null }; }
-        else { targetTown.disabled = true; targetTown.innerHTML = '<option value="">Select LGA first</option>'; if (selectedLocationData) { selectedLocationData.lga = null; selectedLocationData.town = null; } }
-        updateLocationDisplay(); updateFormChecklist();
-      });
-      // Reminder if trying to interact with disabled LGA/Town
-      targetLGA.addEventListener('mousedown', function(e) {
-        if (targetLGA.disabled) { e.preventDefault(); showToast('⚠️ Please select a State first', true); }
-      });
-      targetTown.addEventListener('mousedown', function(e) {
-        if (targetTown.disabled) { e.preventDefault(); showToast('⚠️ Please select an LGA first', true); }
-      });
-
-      // ============ COMPLETION CALCULATION ============
-      function calculateCompletion() {
-        let points = 0, total = 4;
-        if (infraType.value) points++;
-        if (selectedLocationData && selectedLocationData.state) points++;
-        if (projectStatus.value) points++;
-        if (agentNotes.value.trim()) points++;
-        return Math.round((points / total) * 100);
+      function searchLocs(query) {
+        if(!query||query.trim().length<2)return[];
+        const q=query.toLowerCase().trim();
+        return SEARCH_INDEX.filter(i=>i.display.toLowerCase().includes(q)||i.state.toLowerCase().includes(q)||(i.lga&&i.lga.toLowerCase().includes(q))).slice(0,20);
       }
-      function updateFormChecklist() {
-        const typeOk = infraType.value !== '';
-        const locOk = !!(selectedLocationData && selectedLocationData.state);
-        const statusOk = projectStatus.value !== '';
-        const notesOk = agentNotes.value.trim() !== '';
-        checkType.textContent = typeOk ? '✅' : '❌'; checkType.className = typeOk ? 'text-emerald-400' : 'text-red-400';
-        checkLocation.textContent = locOk ? '✅' : '❌'; checkLocation.className = locOk ? 'text-emerald-400' : 'text-red-400';
-        checkStatus.textContent = statusOk ? '✅' : '⚪'; checkStatus.className = statusOk ? 'text-emerald-400' : 'text-slate-500';
-        checkNotes.textContent = notesOk ? '✅' : '⚪'; checkNotes.className = notesOk ? 'text-emerald-400' : 'text-slate-500';
-        const pct = calculateCompletion();
-        completionValue.textContent = pct + '%';
-        completionBar.style.width = pct + '%';
+      function renderSearchResults(results) {
+        if(!results.length){dom.searchDropdown.innerHTML='<div class="no-results p-3 text-center text-xs" style="color:var(--text-muted);">No locations found</div>';dom.searchDropdown.classList.add('active');return;}
+        dom.searchDropdown.innerHTML=results.map(i=>`<div class="search-dropdown-item" data-state="${i.state}" data-lga="${i.lga||''}" data-town="${i.town||''}"><span class="text-blue-600 text-[10px] font-semibold uppercase">${i.type}</span><span class="text-sm block" style="color:var(--text-primary);">${i.display}</span><span class="text-xs" style="color:var(--text-muted);">${i.path}</span></div>`).join('');
+        dom.searchDropdown.classList.add('active');
       }
-
-      // ============ DASHBOARD ============
-      function getFilteredLogs() {
-        return INFRA_LOGS.filter(log => {
-          return (currentStateFilter === '' || log.state === currentStateFilter) &&
-                 (currentStatusFilter === '' || log.status === currentStatusFilter);
-        });
+      function updateStepUI() {
+        [dom.step1,dom.step2,dom.step3].forEach(el=>el.classList.add('hidden-el'));
+        [dom.prevBtn,dom.nextBtn,dom.submitBtn].forEach(el=>el.classList.add('hidden-el'));
+        if(app.step===1){dom.step1.classList.remove('hidden-el');dom.nextBtn.classList.remove('hidden-el');dom.nextBtn.textContent='Next: Media ▶';}
+        else if(app.step===2){dom.step2.classList.remove('hidden-el');dom.prevBtn.classList.remove('hidden-el');dom.nextBtn.classList.remove('hidden-el');dom.nextBtn.textContent='Next: Review ▶';}
+        else if(app.step===3){dom.step3.classList.remove('hidden-el');dom.prevBtn.classList.remove('hidden-el');dom.submitBtn.classList.remove('hidden-el');updateReviewSummary();updateGPSDisplay();}
+        [dom.dot1,dom.dot2,dom.dot3].forEach(d=>d.classList.remove('active','completed'));
+        [dom.line1,dom.line2].forEach(l=>l.classList.remove('completed'));
+        if(app.step>=1){dom.dot1.classList.add('completed');dom.line1.classList.add('completed');}
+        if(app.step>=2){dom.dot2.classList.add('completed');dom.line2.classList.add('completed');}
+        if(app.step===1){dom.dot1.classList.add('active');dom.dot1.classList.remove('completed');dom.line1.classList.remove('completed');}
+        if(app.step===2){dom.dot2.classList.add('active');dom.dot2.classList.remove('completed');dom.line2.classList.remove('completed');}
+        if(app.step===3)dom.dot3.classList.add('active');
+        if (app.miniMap) setTimeout(() => app.miniMap.invalidateSize(), 300);
       }
-      function renderStatCards(filtered) {
-        const total = filtered.length;
-        const storage = (total * 2.4).toFixed(1);
-        const completed = filtered.filter(l => l.status === 'Completed').length;
-        const rate = total ? ((completed / total) * 100).toFixed(1) : '0.0';
-        const synced = filtered.filter(l => l.syncStatus === 'synced').length;
-        const syncRate = total ? ((synced / total) * 100).toFixed(1) : '0.0';
-        statsRow.innerHTML = [
-          { label: 'Total Entries', value: total, icon: '📋' },
-          { label: 'Storage (GB)', value: storage, icon: '💾' },
-          { label: 'Completion', value: rate + '%', icon: '✅', sub: syncRate + '% synced' }
-        ].map(c => `<div class="stat-card"><span class="text-slate-400 text-[10px] md:text-xs uppercase tracking-wider">${c.icon} ${c.label}</span><span class="text-xl md:text-2xl font-bold text-white">${c.value}</span>${c.sub?`<span class="text-[10px] md:text-xs text-slate-500">${c.sub}</span>`:''}</div>`).join('');
+      function goStep(n) {
+        if(n===2){if(!dom.infraType.value){toast('⚠️ Select Infrastructure Type',true);return;}if(!app.location?.state){toast('⚠️ Select State and LGA',true);return;}}
+        if(n===3&&(app.photos+app.videos)===0){toast('⚠️ Capture at least one media',true);return;}
+        app.step=Math.max(1,Math.min(3,n));updateStepUI();
+        if(app.step===3){refreshGPSNow();updateReviewSummary();}
       }
-      function getStatusClass(s) { return {Active:'status-active',Completed:'status-completed',Pending:'status-pending','On Hold':'status-onhold'}[s]||''; }
-      function getSyncClass(s) { return {synced:'sync-synced',pending:'sync-pending',failed:'sync-failed',offline:'sync-offline'}[s]||'sync-offline'; }
-      function getSyncLabel(s) { return {synced:'✓',pending:'⏳',failed:'✗',offline:'📴'}[s]||'?'; }
-      function renderLedger(filtered) {
-        if (!filtered.length) { ledgerBody.innerHTML = '<div class="flex items-center justify-center h-full text-slate-500 text-xs md:text-sm p-4 md:p-8">No entries match filters.</div>'; return; }
-        const isMobile = window.innerWidth < 768;
-        ledgerBody.innerHTML = filtered.map(log => {
-          const loc = [log.town, log.lga, log.state].filter(Boolean).join(', ');
-          if (isMobile) {
-            return `<div class="ledger-row">
-              <div class="ledger-cell" data-label="ID"><span class="cell-value font-mono text-blue-300">${log.id}</span></div>
-              <div class="ledger-cell" data-label="Timestamp"><span class="cell-value text-slate-300">${log.timestamp}</span></div>
-              <div class="ledger-cell" data-label="Agent"><span class="cell-value text-white">${log.agent}</span></div>
-              <div class="ledger-cell" data-label="Location"><span class="cell-value text-slate-300">${loc}</span></div>
-              <div class="ledger-cell" data-label="Infra"><span class="cell-value text-slate-200">${log.infraType}</span></div>
-              <div class="ledger-cell" data-label="Status"><span class="cell-value"><span class="status-pill ${getStatusClass(log.status)}">${log.status}</span></span></div>
-              <div class="ledger-cell" data-label="Sync"><span class="cell-value"><span class="status-pill ${getSyncClass(log.syncStatus)}">${getSyncLabel(log.syncStatus)}</span></span></div>
-              <div class="ledger-cell" data-label="Form"><span class="cell-value"><span class="status-pill ${log.formComplete?'form-complete':'form-incomplete'}">${log.formComplete?'✓':'✗'}</span></span></div>
-              <div class="ledger-actions"><button class="text-slate-400 hover:text-blue-400 text-xs">🔍 View</button></div>
-            </div>`;
-          }
-          return `<div class="grid items-center px-2 md:px-4 py-2 md:py-3 border-b border-slate-800/40 text-[10px] md:text-sm hover:bg-slate-800/30 transition gap-1" style="grid-template-columns:50px 1fr 0.7fr 1fr 70px 60px 60px 60px 50px;">
-            <span class="font-mono text-blue-300 text-[9px] md:text-xs">${log.id}</span>
-            <span class="text-slate-300 truncate-text text-[9px] md:text-xs">${log.timestamp}</span>
-            <span class="font-medium text-white truncate-text text-[9px] md:text-xs">${log.agent}</span>
-            <span class="text-slate-300 truncate-text text-[9px] md:text-xs">${loc}</span>
-            <span class="text-slate-200 truncate-text text-[9px] md:text-xs">${log.infraType}</span>
-            <span><span class="status-pill ${getStatusClass(log.status)}">${log.status}</span></span>
-            <span class="status-cell"><span class="status-pill ${getSyncClass(log.syncStatus)}">${getSyncLabel(log.syncStatus)}</span><span class="status-tooltip">${log.syncStatus==='synced'?'Synced '+log.syncTime:'Pending'}</span></span>
-            <span class="status-cell"><span class="status-pill ${log.formComplete?'form-complete':'form-incomplete'}">${log.formComplete?'✓':'✗'}</span><span class="status-tooltip">${log.formComplete?'Complete':'Incomplete'}</span></span>
-            <span class="flex gap-1 text-[9px] md:text-xs"><button class="text-slate-400 hover:text-blue-400">🔍</button></span>
-          </div>`;
-        }).join('');
+      function updateReviewSummary() {
+        let tl=dom.infraType.value;
+        if(dom.infraType.value.startsWith('custom-'))tl=app.customTypes.find(t=>'custom-'+t.toLowerCase().replace(/\s+/g,'-')===dom.infraType.value)||dom.infraType.value;
+        else if(dom.infraType.selectedOptions[0]&&!dom.infraType.selectedOptions[0].dataset.custom)tl=dom.infraType.selectedOptions[0].textContent;
+        dom.reviewType.textContent=tl||'-';
+        dom.reviewLoc.textContent=app.location?[app.location.town,app.location.lga,app.location.state].filter(Boolean).join(', '):'-';
+        dom.reviewStatus.textContent=dom.projectStatus.value;
+        dom.reviewMedia.textContent=`${app.photos} photos, ${app.videos} videos`;
+        dom.reviewGPS.textContent=app.gps.lat?`${app.gps.lat}, ${app.gps.lng}`:'Acquiring...';
       }
-      function refreshDashboard() { const f = getFilteredLogs(); renderStatCards(f); renderLedger(f); }
-      function exportToCSV() {
-        const f = getFilteredLogs();
-        if (!f.length) { showToast('No data to export', true); return; }
-        const csv = [['ID','Timestamp','Agent','State','LGA','Town','Infra Type','Status','Sync','Form Complete'].join(',')];
-        f.forEach(l => csv.push([l.id,l.timestamp,l.agent,l.state,l.lga||'',l.town||'',l.infraType,l.status,l.syncStatus,l.formComplete?'Yes':'No'].map(c=>`"${c}"`).join(',')));
-        const blob = new Blob([csv.join('\n')],{type:'text/csv'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `blacksurvey_${new Date().toISOString().slice(0,10)}.csv`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(a.href); showToast('📥 CSV exported');
+      function simPhoto() {
+        app.photos++;dom.photoStatus.textContent=app.photos+' image'+(app.photos>1?'s':'');
+        dom.compressNotice.classList.remove('hidden');setTimeout(()=>dom.compressNotice.classList.add('hidden'),2000);
+        dom.mediaPreview.innerHTML+=`<div class="flex items-center gap-2 text-xs bg-card/50 rounded-lg p-2 border" style="color:var(--text-secondary);border-color:var(--border-color);"><span>📸</span><span>Photo ${app.photos} captured & compressed</span></div>`;
+        toast('📸 Photo captured');
       }
-
-      // ============ FIELD CAPTURE ============
-      function simulatePhotoCapture() {
-        photoCount++; photoStatus.textContent = photoCount + ' image' + (photoCount>1?'s':'');
-        compressionNotice.classList.remove('hidden'); setTimeout(() => compressionNotice.classList.add('hidden'), 2000);
-        const preview = document.createElement('div');
-        preview.className = 'flex items-center gap-2 text-xs text-slate-400 bg-slate-800/40 rounded-lg p-2';
-        preview.innerHTML = `<span>📸</span><span>Photo ${photoCount} captured & compressed</span>`;
-        $('mediaPreviewArea').appendChild(preview);
-        showToast('📸 Photo captured & compressed');
-      }
-      function simulateVideoCapture() {
-        videoCount++; videoStatus.textContent = videoCount + ' clip' + (videoCount>1?'s':'');
-        compressionNotice.classList.remove('hidden'); setTimeout(() => compressionNotice.classList.add('hidden'), 3000);
-        const preview = document.createElement('div');
-        preview.className = 'flex items-center gap-2 text-xs text-slate-400 bg-slate-800/40 rounded-lg p-2';
-        preview.innerHTML = `<span>🎥</span><span>Video ${videoCount} recorded & downscaled</span>`;
-        $('mediaPreviewArea').appendChild(preview);
-        showToast('🎥 Video recorded & downscaled');
-      }
-      function updateFieldSyncIndicator() {
-        syncCount.textContent = pendingSyncCount;
-        syncIndicator.innerHTML = pendingSyncCount > 0
-          ? `<span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-amber-400 rounded-full sync-pulse"></span> <span id="syncCount">${pendingSyncCount}</span><span class="hidden xs:inline"> pending</span>`
-          : '<span class="w-1.5 h-1.5 md:w-2 md:h-2 bg-emerald-400 rounded-full"></span><span class="hidden xs:inline"> Synced</span>';
+      function simVideo() {
+        app.videos++;dom.videoStatus.textContent=app.videos+' clip'+(app.videos>1?'s':'');
+        dom.compressNotice.classList.remove('hidden');setTimeout(()=>dom.compressNotice.classList.add('hidden'),3000);
+        dom.mediaPreview.innerHTML+=`<div class="flex items-center gap-2 text-xs bg-card/50 rounded-lg p-2 border" style="color:var(--text-secondary);border-color:var(--border-color);"><span>🎥</span><span>Video ${app.videos} recorded & downscaled</span></div>`;
+        toast('🎥 Video recorded');
       }
       function submitEntry() {
-        const infra = infraType.value;
-        if (!infra) { showToast('⚠️ Select Infrastructure Type', true); return; }
-        if (!selectedLocationData || !selectedLocationData.state) { showToast('⚠️ Select a location', true); return; }
-        if ((photoCount + videoCount) === 0) { showToast('⚠️ Capture at least one media file', true); return; }
-        const entry = {
-          id: 'BS-' + Math.floor(1000+Math.random()*9000),
-          timestamp: new Date().toISOString().replace('T',' ').slice(0,19),
-          agent: 'A. Marek',
-          state: selectedLocationData.state,
-          lga: selectedLocationData.lga || '',
-          town: selectedLocationData.town || '',
-          infraType: infra.charAt(0).toUpperCase()+infra.slice(1),
-          status: projectStatus.value,
-          syncStatus: 'pending',
-          formComplete: true,
-          syncTime: null,
-          gps: { ...gpsData }
-        };
-        INFRA_LOGS.unshift(entry);
-        pendingSyncCount++; updateFieldSyncIndicator(); updateSyncCounter();
-        resetFieldForm(); showToast('✅ Entry submitted successfully');
-        setTimeout(() => {
-          if (pendingSyncCount > 0) {
-            pendingSyncCount = Math.max(0, pendingSyncCount-1);
-            entry.syncStatus = 'synced'; entry.syncTime = new Date().toTimeString().slice(0,8);
-            updateFieldSyncIndicator(); updateSyncCounter(); secondsSinceLastSync = 0;
-          }
-        }, 4000);
+        if(!dom.infraType.value){toast('⚠️ Select Infrastructure Type',true);return;}
+        if(!app.location?.state){toast('⚠️ Select location',true);return;}
+        if((app.photos+app.videos)===0){toast('⚠️ Capture media',true);return;}
+        let tl=dom.infraType.value;
+        if(dom.infraType.value.startsWith('custom-'))tl=app.customTypes.find(t=>'custom-'+t.toLowerCase().replace(/\s+/g,'-')===dom.infraType.value)||dom.infraType.value;
+        else if(dom.infraType.selectedOptions[0]&&!dom.infraType.selectedOptions[0].dataset.custom)tl=dom.infraType.selectedOptions[0].textContent;
+        const entry={id:generateId(),timestamp:new Date().toISOString(),agent:'A. Marek',state:app.location.state,lga:app.location.lga||'',town:app.location.town||'',infraType:tl,status:dom.projectStatus.value,syncStatus:'pending',formComplete:true,syncTime:null,media:{photos:app.photos,videos:app.videos},gps:{...app.gps},notes:dom.agentNotes.value.trim()};
+        app.logs.unshift(entry);app.syncCount++;updateSyncCounter();resetForm();
+        toast('✅ Entry submitted');
+        setTimeout(()=>{if(app.syncCount>0&&app.online&&Math.random()>0.3){app.syncCount=Math.max(0,app.syncCount-1);entry.syncStatus='synced';entry.syncTime=new Date().toTimeString().slice(0,8);updateSyncCounter();app.secondsSinceSync=0;}},4000);
       }
-      function resetFieldForm() {
-        infraType.value = ''; towerHeightGroup.classList.add('conditional-hidden');
-        fiberLengthGroup.classList.add('conditional-hidden');
-        $('towerHeight').value = ''; $('fiberLength').value = '';
-        clearLocationSelection();
-        projectStatus.value = 'Active'; agentNotes.value = '';
-        photoCount = 0; videoCount = 0;
-        photoStatus.textContent = '0 images'; videoStatus.textContent = '0 clips';
-        $('mediaPreviewArea').innerHTML = '<p class="text-slate-400 text-[10px] md:text-xs">Captured media will appear here</p>';
-        currentStep = 1; updateStepUI(); updateFormChecklist();
-      }
-      function showToast(msg, warn) {
-        const t = document.createElement('div'); t.className = 'toast' + (warn ? ' warning' : '');
-        t.textContent = msg; toastContainer.appendChild(t);
-        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2500);
+      function resetForm() {
+        dom.infraType.value='';dom.customGroup.classList.add('hidden-el');dom.customInput.value='';
+        dom.towerGroup.classList.add('conditional-hidden');dom.fiberGroup.classList.add('conditional-hidden');
+        document.getElementById('towerHeight').value='';document.getElementById('fiberLength').value='';clearLocation();
+        dom.projectStatus.value='Active';dom.agentNotes.value='';
+        app.photos=0;app.videos=0;dom.photoStatus.textContent='0 images';dom.videoStatus.textContent='0 clips';
+        dom.mediaPreview.innerHTML='<p class="text-[10px]" style="color:var(--text-muted);">No media captured yet</p>';
+        app.step=1;updateStepUI();updateChecklist();updateMiniMapPosition();
       }
 
-      // ============ EVENT BINDINGS ============
+      // ===== EVENT BINDING =====
       function bindEvents() {
-        stateFilter.addEventListener('change', e => { currentStateFilter = e.target.value; refreshDashboard(); });
-        statusFilter.addEventListener('change', e => { currentStatusFilter = e.target.value; refreshDashboard(); });
-        exportBtn.addEventListener('click', exportToCSV);
-        infraType.addEventListener('change', () => {
-          towerHeightGroup.classList.add('conditional-hidden');
-          fiberLengthGroup.classList.add('conditional-hidden');
-          if (infraType.value === 'tower') towerHeightGroup.classList.remove('conditional-hidden');
-          else if (infraType.value === 'fiber') fiberLengthGroup.classList.remove('conditional-hidden');
-          updateFormChecklist();
+        dom.menuOpenBtn.addEventListener('click', openMenu);
+        dom.menuCloseBtn.addEventListener('click', closeMenu);
+        dom.menuOverlay.addEventListener('click', closeMenu);
+        dom.closeExpandedMap.addEventListener('click', closeExpandedMap);
+        dom.expandedMapOverlay.addEventListener('click', function(e) { if (e.target === dom.expandedMapOverlay) closeExpandedMap(); });
+
+        dom.menuNavItems.forEach(item => item.addEventListener('click', () => switchView(item.dataset.view)));
+
+        dom.stateFilter.addEventListener('change', e => { app.filters.state = e.target.value; refreshDashboard(); });
+        dom.statusFilter.addEventListener('change', e => { app.filters.status = e.target.value; refreshDashboard(); });
+        dom.exportBtn.addEventListener('click', exportCSV);
+        dom.syncAllBtn.addEventListener('click', syncAll);
+        dom.recordsSyncBtn.addEventListener('click', syncAll);
+
+        dom.infraType.addEventListener('change', handleInfraChange);
+        dom.saveCustomBtn.addEventListener('click', saveCustomType);
+
+        dom.targetState.addEventListener('change', function() {
+          if(this.value){populateLGAs(this.value);app.location={state:this.value,lga:null,town:null};}
+          else{dom.targetLGA.disabled=true;dom.targetTown.disabled=true;dom.targetLGA.innerHTML='<option value="">Select state first</option>';dom.targetTown.innerHTML='<option value="">Select LGA first</option>';app.location=null;}
+          updateLocationDisplay();updateChecklist();updateMiniMapPosition();
         });
-        projectStatus.addEventListener('change', updateFormChecklist);
-        agentNotes.addEventListener('input', updateFormChecklist);
-        capturePhotoBtn.addEventListener('click', simulatePhotoCapture);
-        captureVideoBtn.addEventListener('click', simulateVideoCapture);
-        submitEntryBtn.addEventListener('click', submitEntry);
-        window.addEventListener('resize', () => {
-          if (sidebarVisible) applyLayout();
-          if (activeView === 'dashboard') refreshDashboard();
+        dom.targetLGA.addEventListener('change', function() {
+          if(dom.targetState.value&&this.value){populateTowns(dom.targetState.value,this.value);app.location={state:dom.targetState.value,lga:this.value,town:null};}
+          else{dom.targetTown.disabled=true;dom.targetTown.innerHTML='<option value="">Select LGA first</option>';if(app.location){app.location.lga=null;app.location.town=null;}}
+          updateLocationDisplay();updateChecklist();updateMiniMapPosition();
         });
-        window.addEventListener('keydown', e => {
-          if ((e.ctrlKey||e.metaKey) && e.key==='b') { e.preventDefault(); sidebarVisible ? collapseSidebar() : expandSidebar(); }
-        });
-        setInterval(updateNetworkLatency, 5000);
-        setInterval(() => { secondsSinceLastSync++; updateSyncCounter(); }, 1000);
-        setInterval(refreshGPS, 8000);
-        setInterval(() => {
-          if (pendingSyncCount > 0 && Math.random() > 0.5) {
-            pendingSyncCount = Math.max(0, pendingSyncCount-1);
-            updateFieldSyncIndicator(); updateSyncCounter(); secondsSinceLastSync = 0;
-          }
-        }, 12000);
+        dom.targetTown.addEventListener('change', function() { if(app.location)app.location.town=this.value||null;updateLocationDisplay();updateChecklist();updateMiniMapPosition(); });
+
+        dom.locationSearch.addEventListener('input', debounce(function() { renderSearchResults(searchLocs(this.value)); }, 200));
+        dom.searchDropdown.addEventListener('click', e => { const i = e.target.closest('.search-dropdown-item'); if(i) selectLocation(i.dataset.state, i.dataset.lga, i.dataset.town); });
+        document.addEventListener('click', e => { if(!e.target.closest('.location-search-wrapper')) dom.searchDropdown.classList.remove('active'); });
+        dom.clearLocation.addEventListener('click', clearLocation);
+
+        dom.photoBtn.addEventListener('click', simPhoto);
+        dom.videoBtn.addEventListener('click', simVideo);
+
+        dom.nextBtn.addEventListener('click', () => goStep(app.step + 1));
+        dom.prevBtn.addEventListener('click', () => goStep(app.step - 1));
+        dom.submitBtn.addEventListener('click', submitEntry);
+        dom.editEntry.addEventListener('click', () => { app.step = 1; updateStepUI(); toast('✏️ Edit your entry'); });
+        dom.refreshGPS.addEventListener('click', refreshGPSNow);
+
+        dom.modalOverlay.addEventListener('click', function(e) { if(e.target === dom.modalOverlay) dom.modalOverlay.classList.add('hidden-el'); });
+        dom.themeToggleBtn.addEventListener('click', toggleTheme);
+
+        window.addEventListener('keydown', e => { if(e.key === 'Escape') { closeExpandedMap(); closeMenu(); } });
+
+        checkConnectivity();
+        setInterval(checkConnectivity, 30000);
+        setInterval(() => { app.secondsSinceSync++; if(app.activeView === 'dashboard') dom.lastSync.textContent = app.secondsSinceSync + 's ago'; }, 1000);
       }
 
+      // ===== INIT =====
       function init() {
-        populateStates();
-        applyLayout();
-        bindEvents();
-        refreshDashboard();
-        updateFormChecklist();
-        updateFieldSyncIndicator();
-        updateSyncCounter();
-        updateNetworkLatency();
-        refreshGPS();
-        updateStepUI();
-        switchView('dashboard');
-        console.log('%c🛰️ BlackSurvey v2.5 %cReady %c| %c37 States %c| %c📱 Responsive %c| %c📋 Multi-Step Form',
-          'color:#3b82f6;font-weight:bold;','color:#e2e8f0;','','color:#10b981;','','color:#f59e0b;','','color:#8b5cf6;');
+        createParticles();
+        populateStates(); bindEvents(); startGPS();
+        refreshDashboard(); updateChecklist(); updateStepUI(); switchView('dashboard');
+        hideLoadingScreen();
+        console.log('%c🛰️ BlackSurvey v4.1 %cReady %c| %c🌐 Powered by KalivDigitals','color:#3b82f6;font-weight:bold;','color:#0f172a;','','color:#10b981;');
       }
       init();
     })();

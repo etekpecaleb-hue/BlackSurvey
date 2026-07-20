@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover, shrink-to-fit=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>BlackSurvey • ArcGIS Admin Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://js.arcgis.com/4.28/esri/themes/dark/main.css" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --menu-width:280px;
+      --bg-primary:#0f172a;
+      --bg-secondary:#1e293b;
+      --bg-card:#1e293b;
+      --border-color:#334155;
+      --text-primary:#f8fafc;
+      --text-secondary:#cbd5e1;
+      --text-muted:#94a3b8;
+      --shadow:0 10px 25px rgba(0,0,0,0.3);
+      --accent:#3b82f6;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+    }
+    html,body{height:100%;width:100%;background:var(--bg-primary);font-family:'Inter',system-ui,-apple-system,sans-serif;overflow:hidden;font-size:16px;color:var(--text-primary);}
+    .custom-scroll::-webkit-scrollbar{width:6px;height:6px}
+    .custom-scroll::-webkit-scrollbar-track{background:var(--bg-secondary);border-radius:8px}
+    .custom-scroll::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:8px}
+    .admin-layout{display:flex;height:100vh;width:100%;overflow:hidden;}
+    .sidebar{width:280px;background:var(--bg-secondary);border-right:1px solid var(--border-color);display:flex;flex-direction:column;flex-shrink:0;z-index:20;transition:transform 0.3s ease;}
+    .main-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-primary);}
+    .nav-item{display:flex;align-items:center;gap:14px;padding:12px 20px;margin:2px 12px;border-radius:12px;color:var(--text-secondary);font-weight:500;font-size:0.9rem;transition:all 0.2s;cursor:pointer;}
+    .nav-item svg{width:20px;height:20px;flex-shrink:0;}
+    .nav-item:hover{background:#334155;color:#fff;}
+    .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 8px 16px rgba(59,130,246,0.3);}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);transition:transform 0.2s;}
+    .stat-card:hover{transform:translateY(-2px);}
+    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
+    .modal-content{background:var(--bg-card);border:1px solid var(--border-color);border-radius:20px;padding:2rem;max-width:900px;width:100%;max-height:85vh;overflow-y:auto;color:var(--text-primary);}
+    .field-input{background:#0f172a;border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;font-size:0.9rem;color:white;width:100%;transition:border 0.2s;}
+    .field-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,0.2);}
+    .map-container{border-radius:16px;overflow:hidden;border:1px solid var(--border-color);}
+    .badge{padding:4px 12px;border-radius:9999px;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
+    .pulse-dot{width:8px;height:8px;border-radius:50%;display:inline-block;position:relative;}
+    .pulse-dot::after{content:'';position:absolute;width:100%;height:100%;border-radius:50%;background:inherit;opacity:0.5;animation:pulse 2s infinite;}
+    @keyframes pulse{0%{transform:scale(1);opacity:0.5}100%{transform:scale(3);opacity:0}}
+    @media (max-width: 1024px) {.sidebar{position:fixed;left:0;top:0;height:100%;transform:translateX(-100%);z-index:50;}.sidebar.mobile-open{transform:translateX(0);}}
+  </style>
+</head>
+<body class="antialiased">
+
+<div class="admin-layout">
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="sidebar">
+    <div class="p-6 flex items-center gap-3 border-b border-border">
+      <div class="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <div><h1 class="text-lg font-bold tracking-tight text-white">BlackSurvey</h1><p class="text-xs text-slate-400">ArcGIS Admin</p></div>
+    </div>
+    <nav class="flex-1 py-6 flex flex-col gap-1">
+      <div class="nav-item active" data-view="overview">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" data-view="agents">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        Field Agents
+      </div>
+      <div class="nav-item" data-view="surveys">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Survey Forms
+      </div>
+      <div class="nav-item" data-view="projects">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Projects
+      </div>
+      <div class="nav-item" data-view="layers">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Feature Layers
+      </div>
+      <div class="nav-item" data-view="sync">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        Sync Status
+      </div>
+      <div class="nav-item" data-view="mapview">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Map Viewer
+      </div>
+    </nav>
+    <div class="p-5 border-t border-border">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </div>
+        <div><p class="text-sm font-medium text-white">GIS Administrator</p><p class="text-xs text-slate-400">ArcGIS Enterprise</p></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <main class="main-panel custom-scroll overflow-y-auto">
+    <div class="px-6 py-4 flex items-center justify-between border-b border-border bg-secondary/30 backdrop-blur-sm sticky top-0 z-10">
+      <div class="flex items-center gap-4">
+        <button id="menuToggle" class="lg:hidden text-slate-300 hover:text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <h2 class="text-xl font-semibold flex items-center gap-3" id="viewTitle">
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          GIS Overview 
+        </h2>
+      </div>
+      <div class="flex items-center gap-4 text-sm">
+        <span class="flex items-center gap-2">
+          <span class="pulse-dot bg-green-400"></span>
+          BlackSurvey Online
+        </span>
+        <span class="text-slate-500">|</span>
+        <span>v11.2</span>
+        <span class="text-slate-500">|</span>
+        <span class="flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span id="liveTime">--</span>
+        </span>
+      </div>
+    </div>
+    <div id="viewContainer" class="p-6 space-y-6"></div>
+  </main>
+</div>
+
+<!-- GLOBAL MODAL -->
+<div id="globalModal" class="modal-overlay hidden" style="display:none;">
+  <div class="modal-content" id="modalContent"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://js.arcgis.com/4.28/"></script>
+<script>
+  (function() {
+    // ----- ARCGIS CONFIGURATION -----
+    const ARCGIS_CONFIG = {
+      portalUrl: "https://www.arcgis.com", // Change to your Enterprise portal
+      appId: "YOUR_APP_ID", // Register in ArcGIS Developers
+      featureServiceURL: "https://services.arcgis.com/.../FeatureServer/0", // Your feature service
+    };
+
+    // ----- MOCK DATA ENRICHED WITH GIS ATTRIBUTES -----
+    const agents = [
+      { id:1, name:"A. Marek", region:"Rivers", status:"Active", collectedToday:12, lastSync:"2 min ago", lat:4.8156, lng:7.0498, phone:"+234 812 345 6789", email:"a.marek@blacksurvey.ng", device:"Galaxy S23", os:"Android 14", accuracy:"1.2m", surveyCount:24, lastSurvey:"Pipeline Inspection v2" },
+      { id:2, name:"C. Obi", region:"FCT Abuja", status:"Active", collectedToday:8, lastSync:"5 min ago", lat:9.0579, lng:7.4951, phone:"+234 803 987 6543", email:"c.obi@blacksurvey.ng", device:"iPhone 15 Pro", os:"iOS 18", accuracy:"0.9m", surveyCount:17, lastSurvey:"Building Footprint" },
+      { id:3, name:"F. Nkosi", region:"Kano", status:"Idle", collectedToday:4, lastSync:"22 min ago", lat:11.9998, lng:8.5265, phone:"+234 706 112 2334", email:"f.nkosi@blacksurvey.ng", device:"Pixel 8", os:"Android 15", accuracy:"2.4m", surveyCount:9, lastSurvey:"Tower Maintenance" },
+      { id:4, name:"L. Bello", region:"Lagos", status:"Active", collectedToday:15, lastSync:"1 min ago", lat:6.5244, lng:3.3792, phone:"+234 901 555 8899", email:"l.bello@blacksurvey.ng", device:"Galaxy S24", os:"Android 14", accuracy:"0.8m", surveyCount:31, lastSurvey:"Fiber Route Survey" },
+      { id:5, name:"Z. Mohammed", region:"Kaduna", status:"Offline", collectedToday:0, lastSync:"2 hours ago", lat:10.5105, lng:7.4165, phone:"+234 808 222 4455", email:"z.mohammed@blacksurvey.ng", device:"iPhone 14", os:"iOS 17", accuracy:"N/A", surveyCount:5, lastSurvey:"Power Pole Inventory" }
+    ];
+
+    let projects = [
+      { name:"Lagos Island Fiber", progress:78, status:"Active", lead:"L. Bello", points:340, type:"Fiber Optic", startDate:"2026-06-01", priority:"High", layerURL:"fiber_network_4326", featureCount:2340 },
+      { name:"Abuja Data Centers", progress:92, status:"Active", lead:"C. Obi", points:210, type:"Data Center", startDate:"2026-05-15", priority:"Critical", layerURL:"data_centers_4326", featureCount:156 },
+      { name:"Rivers Power Grid", progress:45, status:"Pending", lead:"A. Marek", points:128, type:"Power Grid", startDate:"2026-07-01", priority:"Medium", layerURL:"power_grid_4326", featureCount:892 },
+      { name:"Kano Tower Upgrade", progress:15, status:"On Hold", lead:"F. Nkosi", points:67, type:"Telecom Tower", startDate:"2026-06-20", priority:"Low", layerURL:"towers_4326", featureCount:45 }
+    ];
+
+    // Survey templates (like Survey123)
+    const surveyTemplates = [
+      { id:"S001", name:"Infrastructure Damage Assessment", category:"Emergency", questions:12, submissions:234, lastModified:"2026-07-19", status:"Published" },
+      { id:"S002", name:"Telecom Tower Inspection", category:"Telecom", questions:18, submissions:567, lastModified:"2026-07-18", status:"Published" },
+      { id:"S003", name:"Water Point Mapping", category:"WASH", questions:8, submissions:123, lastModified:"2026-07-15", status:"Draft" },
+      { id:"S004", name:"Road Condition Survey", category:"Transportation", questions:15, submissions:89, lastModified:"2026-07-20", status:"Published" }
+    ];
+
+    // Feature layers
+    const featureLayers = [
+      { name:"Fiber Optic Cables", type:"Line", features:2340, lastUpdated:"2 hours ago", status:"Active", geometryType:"esriGeometryPolyline" },
+      { name:"Telecom Towers", type:"Point", features:45, lastUpdated:"1 hour ago", status:"Active", geometryType:"esriGeometryPoint" },
+      { name:"Power Substations", type:"Polygon", features:128, lastUpdated:"30 min ago", status:"Active", geometryType:"esriGeometryPolygon" },
+      { name:"Survey Plots", type:"Polygon", features:892, lastUpdated:"5 min ago", status:"Active", geometryType:"esriGeometryPolygon" }
+    ];
+
+    const $ = id => document.getElementById(id);
+    const container = document.getElementById('viewContainer');
+    const viewTitle = document.getElementById('viewTitle');
+    const sidebar = document.getElementById('sidebar');
+    const globalModal = document.getElementById('globalModal');
+    const modalContent = document.getElementById('modalContent');
+
+    function openModal(html) { modalContent.innerHTML = html; globalModal.style.display = 'flex'; }
+    function closeModal() { globalModal.style.display = 'none'; }
+    globalModal.addEventListener('click', e => { if (e.target === globalModal) closeModal(); });
+
+    function setActiveNav(view) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+    }
+
+    // ----- ICON SVGS -----
+    const icons = {
+      agents: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+      collection: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>',
+      pending: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+      projects: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>',
+      plus: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>',
+      table: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>',
+      map: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>',
+      location: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>',
+      survey: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>',
+      layer: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>',
+    };
+
+    // ----- ARCGIS MAP INITIALIZATION -----
+    let mapView = null;
+
+    async function initArcGISMap(containerId, center = [9.0820, 8.6753], zoom = 6) {
+      try {
+        require(["esri/Map", "esri/views/MapView", "esri/layers/FeatureLayer", "esri/Graphic", "esri/geometry/Point"], 
+        (Map, MapView, FeatureLayer, Graphic, Point) => {
+          const map = new Map({
+            basemap: "dark-gray-vector" // ArcGIS dark basemap
+          });
+
+          const view = new MapView({
+            container: containerId,
+            map: map,
+            center: center,
+            zoom: zoom,
+            ui: {
+              components: ["zoom", "compass", "attribution"]
+            }
+          });
+
+          // Add agent locations as graphics
+          view.when(() => {
+            agents.forEach(agent => {
+              if (agent.lat && agent.lng) {
+                const point = new Point({
+                  longitude: agent.lng,
+                  latitude: agent.lat
+                });
+
+                const markerSymbol = {
+                  type: "simple-marker",
+                  color: agent.status === 'Active' ? [16, 185, 129] : [245, 158, 11],
+                  size: "12px",
+                  outline: {
+                    color: [255, 255, 255],
+                    width: 2
+                  }
+                };
+
+                const graphic = new Graphic({
+                  geometry: point,
+                  symbol: markerSymbol,
+                  attributes: agent,
+                  popupTemplate: {
+                    title: agent.name,
+                    content: `
+                      <b>Region:</b> ${agent.region}<br>
+                      <b>Status:</b> ${agent.status}<br>
+                      <b>Collected Today:</b> ${agent.collectedToday} points<br>
+                      <b>Last Sync:</b> ${agent.lastSync}<br>
+                      <b>Device:</b> ${agent.device}<br>
+                      <b>GPS Accuracy:</b> ${agent.accuracy}
+                    `
+                  }
+                });
+
+                view.graphics.add(graphic);
+              }
+            });
+
+            // Add project sites
+            const projectSites = [
+              {name:"Lagos Fiber Project", lat:6.5244, lng:3.3792, type:"Fiber"},
+              {name:"Abuja Data Center", lat:9.0579, lng:7.4951, type:"Data Center"},
+              {name:"Kano Tower Site", lat:11.9998, lng:8.5265, type:"Telecom"}
+            ];
+
+            projectSites.forEach(site => {
+              const point = new Point({
+                longitude: site.lng,
+                latitude: site.lat
+              });
+
+              const symbol = {
+                type: "simple-marker",
+                color: [59, 130, 246],
+                size: "16px",
+                outline: {
+                  color: [255, 255, 255],
+                  width: 2
+                }
+              };
+
+              const graphic = new Graphic({
+                geometry: point,
+                symbol: symbol,
+                popupTemplate: {
+                  title: site.name,
+                  content: `<b>Type:</b> ${site.type}<br><b>Status:</b> Active Project`
+                }
+              });
+
+              view.graphics.add(graphic);
+            });
+          });
+
+          mapView = view;
+        });
+      } catch (error) {
+        console.error("ArcGIS initialization error:", error);
+        // Fallback to Leaflet if ArcGIS fails
+        initLeafletFallback(containerId, center, zoom);
+      }
+    }
+
+    function initLeafletFallback(containerId, center, zoom) {
+      const mapEl = document.getElementById(containerId);
+      if (!mapEl) return;
+      
+      const map = L.map(containerId, { center: center, zoom: zoom });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap, &copy; CartoDB'
+      }).addTo(map);
+
+      agents.forEach(a => {
+        if (a.lat) {
+          const color = a.status === 'Active' ? '#10b981' : '#f59e0b';
+          L.circleMarker([a.lat, a.lng], {
+            radius: 8,
+            color: '#fff',
+            fillColor: color,
+            fillOpacity: 0.9,
+            weight: 2
+          }).bindPopup(`<b>${a.name}</b><br>${a.region}<br>${a.status}`).addTo(map);
+        }
+      });
+    }
+
+    // ----- RENDER VIEWS -----
+    function renderOverview() {
+      viewTitle.innerHTML = `${icons.projects} ArcGIS Enterprise Overview`;
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="stat-card">
+            <span class="text-slate-400 text-xs uppercase flex items-center gap-2">${icons.agents} Active Field Agents</span>
+            <span class="text-3xl font-bold">${agents.filter(a=>a.status==='Active').length}/${agents.length}</span>
+            <span class="text-xs text-slate-500">Collecting GIS data</span>
+          </div>
+          <div class="stat-card">
+            <span class="text-slate-400 text-xs uppercase flex items-center gap-2">${icons.collection} Feature Collections</span>
+            <span class="text-3xl font-bold">3,847</span>
+            <span class="text-xs text-slate-500">Points, Lines & Polygons</span>
+          </div>
+          <div class="stat-card">
+            <span class="text-slate-400 text-xs uppercase flex items-center gap-2">${icons.pending} Pending Sync</span>
+            <span class="text-3xl font-bold text-amber-400">23</span>
+            <span class="text-xs text-slate-500">Awaiting upload</span>
+          </div>
+          <div class="stat-card">
+            <span class="text-slate-400 text-xs uppercase flex items-center gap-2">${icons.layer} Feature Layers</span>
+            <span class="text-3xl font-bold">${featureLayers.length}</span>
+            <span class="text-xs text-slate-500">Active services</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          <div class="lg:col-span-2 bg-card border border-border rounded-2xl p-5">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+              ${icons.map} Live GIS Data Collection Map
+              <span class="text-xs text-slate-400 ml-auto">ArcGIS Dark Basemap</span>
+            </h3>
+            <div id="overviewMap" class="map-container" style="height:400px;"></div>
+          </div>
+          <div class="bg-card border border-border rounded-2xl p-5">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              Recent Submissions
+            </h3>
+            <div class="space-y-3">
+              ${agents.slice(0,4).map(a => `
+                <div class="flex justify-between text-sm py-2 border-b border-slate-700/50">
+                  <div>
+                    <span class="font-medium">${a.name}</span>
+                    <p class="text-xs text-slate-400">${a.lastSurvey}</p>
+                  </div>
+                  <span class="text-slate-400 text-xs">${a.lastSync}</span>
+                </div>
+              `).join('')}
+            </div>
+            <div class="mt-4 p-3 bg-blue-900/20 rounded-lg border border-blue-800/50">
+              <p class="text-xs text-blue-300">
+                <span class="font-semibold">ArcGIS Integration:</span> Connected to Enterprise Portal
+              </p>
+              <p class="text-xs text-slate-400 mt-1">Feature services: ${featureLayers.length} active</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          <div class="bg-card border border-border rounded-2xl p-5">
+            <h3 class="font-semibold mb-3 flex items-center gap-2">${icons.survey} Survey Activity</h3>
+            <div class="space-y-2">
+              ${surveyTemplates.map(s => `
+                <div class="flex justify-between items-center text-sm">
+                  <span>${s.name}</span>
+                  <span class="badge bg-blue-900/50 text-blue-300">${s.submissions} submissions</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="bg-card border border-border rounded-2xl p-5">
+            <h3 class="font-semibold mb-3 flex items-center gap-2">${icons.layer} Feature Service Health</h3>
+            <div class="space-y-2">
+              ${featureLayers.map(l => `
+                <div class="flex justify-between items-center text-sm">
+                  <span>${l.name}</span>
+                  <span class="flex items-center gap-2">
+                    <span class="pulse-dot bg-green-400"></span>
+                    <span class="text-xs text-slate-400">${l.features} features</span>
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+      setTimeout(() => initArcGISMap('overviewMap'), 500);
+    }
+
+    function renderAgents() {
+      viewTitle.innerHTML = `${icons.agents} Field Agents • GIS Data Collectors`;
+      container.innerHTML = `
+        <div class="flex justify-between mb-4">
+          <div class="flex gap-2">
+            <select class="field-input w-auto">
+              <option>All Regions</option>
+              <option>Rivers</option>
+              <option>FCT Abuja</option>
+              <option>Kano</option>
+              <option>Lagos</option>
+            </select>
+            <select class="field-input w-auto">
+              <option>All Status</option>
+              <option>Active</option>
+              <option>Idle</option>
+              <option>Offline</option>
+            </select>
+          </div>
+          <button id="openAgentTableBtn" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-xl text-white font-medium flex items-center gap-2">
+            ${icons.table} Full Roster & GPS Accuracy
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          ${agents.map(a => `
+            <div class="bg-card border border-border rounded-2xl p-5 shadow-lg hover:shadow-xl transition-shadow">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">${a.name.charAt(0)}</div>
+                  <div>
+                    <p class="font-semibold">${a.name}</p>
+                    <p class="text-xs text-slate-400 flex items-center gap-1">${icons.location}${a.region}</p>
+                  </div>
+                </div>
+                <span class="badge ${a.status==='Active'?'bg-green-900/50 text-green-300':a.status==='Idle'?'bg-amber-900/50 text-amber-300':'bg-slate-700 text-slate-300'}">
+                  ${a.status}
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="text-slate-400 block text-xs">GPS Accuracy</span>
+                  <span class="font-bold text-blue-400">${a.accuracy}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-xs">Surveys Done</span>
+                  <span class="font-bold">${a.surveyCount}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-xs">Today's Points</span>
+                  <span class="font-bold">${a.collectedToday}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-xs">Last Sync</span>
+                  <span class="text-xs">${a.lastSync}</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-700/50">
+                <p class="text-xs text-slate-400">Device: ${a.device} • ${a.os}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      document.getElementById('openAgentTableBtn')?.addEventListener('click', showAgentTableModal);
+    }
+
+    function showAgentTableModal() {
+      const html = `
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold flex items-center gap-2">
+            ${icons.table} Field Agent Roster & GIS Metadata
+          </h3>
+          <button onclick="document.getElementById('globalModal').style.display='none'" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div class="mb-4 p-3 bg-blue-900/20 rounded-lg">
+          <p class="text-sm text-blue-300">📡 Connected to ArcGIS Tracker & Field Maps</p>
+        </div>
+        <div class="overflow-x-auto custom-scroll">
+          <table class="w-full text-sm">
+            <thead class="border-b border-border text-slate-400 uppercase text-xs">
+              <tr>
+                <th class="p-3 text-left">Agent</th>
+                <th class="p-3 text-left">Region</th>
+                <th class="p-3 text-left">GPS Accuracy</th>
+                <th class="p-3 text-left">Device</th>
+                <th class="p-3 text-left">Surveys</th>
+                <th class="p-3 text-left">Last Survey</th>
+                <th class="p-3 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${agents.map(a => `
+                <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
+                  <td class="p-3 font-medium">${a.name}</td>
+                  <td class="p-3">${a.region}</td>
+                  <td class="p-3 text-blue-400">${a.accuracy}</td>
+                  <td class="p-3 text-xs">${a.device}<br>${a.os}</td>
+                  <td class="p-3">${a.surveyCount}</td>
+                  <td class="p-3 text-xs">${a.lastSurvey}</td>
+                  <td class="p-3">
+                    <span class="badge ${a.status==='Active'?'bg-green-900/50 text-green-300':'bg-slate-700 text-slate-300'}">
+                      ${a.status}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 p-3 bg-slate-800 rounded-lg">
+          <p class="text-xs text-slate-400">
+            📊 Average GPS Accuracy: <span class="text-green-400 font-bold">1.3m</span> • 
+            Total Active Agents: <span class="text-blue-400 font-bold">${agents.filter(a=>a.status==='Active').length}</span>
+          </p>
+        </div>
+      `;
+      openModal(html);
+    }
+
+    function renderSurveys() {
+      viewTitle.innerHTML = `${icons.survey} Survey Forms & Data Collection`;
+      container.innerHTML = `
+        <div class="flex justify-end mb-4">
+          <button id="createSurveyBtn" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 px-6 py-2.5 rounded-xl text-white font-bold flex items-center gap-2">
+            ${icons.plus} Create Survey Form
+          </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          ${surveyTemplates.map(s => `
+            <div class="bg-card border border-border rounded-2xl p-5 hover:shadow-lg transition-shadow">
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <h3 class="font-semibold text-lg">${s.name}</h3>
+                  <span class="text-xs text-slate-400">${s.category} Survey</span>
+                </div>
+                <span class="badge ${s.status==='Published'?'bg-green-900/50 text-green-300':'bg-amber-900/50 text-amber-300'}">${s.status}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-3 text-sm mb-3">
+                <div>
+                  <span class="text-slate-400 block text-xs">Questions</span>
+                  <span class="font-bold">${s.questions}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-xs">Submissions</span>
+                  <span class="font-bold">${s.submissions}</span>
+                </div>
+              </div>
+              <div class="flex justify-between items-center pt-3 border-t border-slate-700/50">
+                <span class="text-xs text-slate-400">Modified: ${s.lastModified}</span>
+                <div class="flex gap-2">
+                  <button class="text-blue-400 hover:text-blue-300 text-xs">📋 Edit</button>
+                  <button class="text-slate-400 hover:text-slate-300 text-xs">📊 Results</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="mt-6 bg-card border border-border rounded-2xl p-5">
+          <h3 class="font-semibold mb-3 flex items-center gap-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Submission Analytics
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="stat-card bg-slate-800/50">
+              <span class="text-slate-400 text-xs">Total Submissions</span>
+              <span class="text-2xl font-bold">1,013</span>
+            </div>
+            <div class="stat-card bg-slate-800/50">
+              <span class="text-slate-400 text-xs">Avg. Accuracy</span>
+              <span class="text-2xl font-bold text-green-400">1.3m</span>
+            </div>
+            <div class="stat-card bg-slate-800/50">
+              <span class="text-slate-400 text-xs">Sync Rate</span>
+              <span class="text-2xl font-bold text-blue-400">98.5%</span>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('createSurveyBtn')?.addEventListener('click', showCreateSurveyModal);
+    }
+
+    function showCreateSurveyModal() {
+      const html = `
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold flex items-center gap-2">${icons.plus} Create ArcGIS Survey</h3>
+          <button onclick="document.getElementById('globalModal').style.display='none'" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div class="mb-4 p-3 bg-blue-900/20 rounded-lg">
+          <p class="text-sm text-blue-300">📝 Create a new survey form for field data collection (Survey123 compatible)</p>
+        </div>
+        <form id="newSurveyForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Survey Name *</label>
+            <input type="text" id="surveyName" class="field-input" placeholder="e.g., Asset Inventory Survey">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Category</label>
+              <select id="surveyCategory" class="field-input">
+                <option>Infrastructure</option>
+                <option>Telecom</option>
+                <option>WASH</option>
+                <option>Transportation</option>
+                <option>Environmental</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Geometry Type</label>
+              <select id="geometryType" class="field-input">
+                <option>Point</option>
+                <option>Line</option>
+                <option>Polygon</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Target Feature Layer</label>
+            <select id="targetLayer" class="field-input">
+              ${featureLayers.map(l => `<option>${l.name}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Fields (comma-separated)</label>
+            <input type="text" id="surveyFields" class="field-input" placeholder="e.g., condition, material, height, photo">
+          </div>
+          <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold py-3 rounded-xl hover:from-blue-500 transition flex items-center justify-center gap-2">
+            ${icons.plus} Create Survey & Publish to ArcGIS
+          </button>
+        </form>
+      `;
+      openModal(html);
+      document.getElementById('newSurveyForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('surveyName').value.trim();
+        if (!name) return alert('Survey name required');
+        surveyTemplates.push({
+          id: 'S' + (surveyTemplates.length + 1).toString().padStart(3, '0'),
+          name: name,
+          category: document.getElementById('surveyCategory').value,
+          questions: 10,
+          submissions: 0,
+          lastModified: new Date().toISOString().split('T')[0],
+          status: 'Draft'
+        });
+        closeModal();
+        renderSurveys();
+        alert('✅ Survey created! Ready for ArcGIS deployment.');
+      });
+    }
+
+    function renderProjects() {
+      viewTitle.innerHTML = `${icons.projects} GIS Infrastructure Projects`;
+      container.innerHTML = `
+        <div class="flex justify-end mb-4">
+          <button id="createProjectBtn" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 px-6 py-2.5 rounded-xl text-white font-bold flex items-center gap-2">
+            ${icons.plus} Create GIS Project
+          </button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          ${projects.map(p => `
+            <div class="bg-card border border-border rounded-2xl p-5">
+              <div class="flex justify-between items-start mb-3">
+                <h3 class="font-semibold text-lg">${p.name}</h3>
+                <span class="badge ${p.status==='Active'?'bg-blue-900/50 text-blue-300':'bg-amber-900/50 text-amber-300'}">${p.status}</span>
+              </div>
+              <div class="text-sm text-slate-400 mb-1">Lead: ${p.lead} • Type: ${p.type}</div>
+              <div class="text-xs text-slate-500 mb-3">
+                Started: ${p.startDate} • Priority: ${p.priority} • Layer: ${p.layerURL}
+              </div>
+              <div class="w-full bg-slate-700 rounded-full h-3 mb-2">
+                <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-3 rounded-full transition-all" style="width:${p.progress}%"></div>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span>${p.progress}% complete</span>
+                <span>${p.featureCount} features collected</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      document.getElementById('createProjectBtn')?.addEventListener('click', showCreateProjectModal);
+    }
+
+    function showCreateProjectModal() {
+      const html = `
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-bold flex items-center gap-2">${icons.plus} Create GIS Project</h3>
+          <button onclick="document.getElementById('globalModal').style.display='none'" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="newProjectForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Project Name *</label>
+            <input type="text" id="projName" class="field-input" placeholder="e.g., Enugu Solar Farm Mapping">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Type</label>
+              <select id="projType" class="field-input">
+                <option>Telecom Tower</option>
+                <option>Data Center</option>
+                <option>Fiber Optic</option>
+                <option>Power Grid</option>
+                <option>Water Network</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Priority</label>
+              <select id="projPriority" class="field-input">
+                <option>High</option>
+                <option selected>Medium</option>
+                <option>Low</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Start Date</label>
+              <input type="date" id="projDate" class="field-input" value="2026-07-20">
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Lead Agent</label>
+              <select id="projLead" class="field-input">
+                ${agents.map(a => `<option>${a.name}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Target Feature Layer</label>
+            <select id="targetFeatureLayer" class="field-input">
+              ${featureLayers.map(l => `<option>${l.name} (${l.type})</option>`).join('')}
+            </select>
+          </div>
+          <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold py-3 rounded-xl hover:from-blue-500 transition flex items-center justify-center gap-2">
+            ${icons.plus} Launch GIS Project
+          </button>
+        </form>
+      `;
+      openModal(html);
+      document.getElementById('newProjectForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('projName').value.trim();
+        if (!name) return alert('Project name required');
+        projects.push({
+          name, progress:0, status:"Active", lead:document.getElementById('projLead').value,
+          points:0, type:document.getElementById('projType').value,
+          startDate:document.getElementById('projDate').value,
+          priority:document.getElementById('projPriority').value,
+          layerURL: name.toLowerCase().replace(/ /g, '_') + '_4326',
+          featureCount:0
+        });
+        closeModal(); renderProjects(); alert('✅ GIS Project created! Feature layer will be provisioned.');
+      });
+    }
+
+    function renderLayers() {
+      viewTitle.innerHTML = `${icons.layer} Feature Layers & Services`;
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          ${featureLayers.map(l => `
+            <div class="bg-card border border-border rounded-2xl p-5">
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <h3 class="font-semibold text-lg">${l.name}</h3>
+                  <span class="text-xs text-slate-400">${l.geometryType} • ${l.type}</span>
+                </div>
+                <span class="pulse-dot bg-green-400"></span>
+              </div>
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span class="text-slate-400 block text-xs">Features</span>
+                  <span class="font-bold">${l.features.toLocaleString()}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-xs">Last Updated</span>
+                  <span class="text-xs">${l.lastUpdated}</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-slate-700/50 flex justify-between">
+                <span class="text-xs text-slate-400">REST URL: /${l.name.toLowerCase().replace(/ /g, '_')}</span>
+                <button class="text-blue-400 hover:text-blue-300 text-xs">📋 Schema</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="mt-6 bg-card border border-border rounded-2xl p-5">
+          <h3 class="font-semibold mb-3">ArcGIS REST Services Directory</h3>
+          <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300">
+            <p class="text-blue-400">https://gis.black-survey.ng/arcgis/rest/services/</p>
+            <p class="mt-2 text-slate-500">├── FieldData/ (FeatureServer)</p>
+            <p class="text-slate-500">│   ├── Survey_Points (0)</p>
+            <p class="text-slate-500">│   ├── Tower_Inspections (1)</p>
+            <p class="text-slate-500">│   └── Asset_Inventory (2)</p>
+            <p class="text-slate-500">├── Infrastructure/ (FeatureServer)</p>
+            <p class="text-slate-500">└── Basemaps/ (MapServer)</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSync() {
+      viewTitle.innerHTML = `<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> ArcGIS Sync & Replication`;
+      container.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+          <div class="stat-card">
+            <span class="text-slate-400 flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Synced to ArcGIS
+            </span>
+            <span class="text-4xl font-bold text-green-400">3,824</span>
+            <span class="text-xs text-slate-400">Features replicated</span>
+          </div>
+          <div class="stat-card">
+            <span class="text-slate-400 flex items-center gap-2">
+              <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Pending Upload
+            </span>
+            <span class="text-4xl font-bold text-amber-400">23</span>
+            <span class="text-xs text-slate-400">Offline edits</span>
+          </div>
+          <div class="stat-card">
+            <span class="text-slate-400 flex items-center gap-2">
+              <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Sync Errors
+            </span>
+            <span class="text-4xl font-bold text-red-400">4</span>
+            <span class="text-xs text-slate-400">Requires attention</span>
+          </div>
+        </div>
+        <div class="bg-card border border-border rounded-2xl p-5 mb-6">
+          <h3 class="font-semibold mb-4">Replication Status</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between text-sm">
+              <span>Feature Layer: Survey Points</span>
+              <span class="flex items-center gap-2">
+                <span class="pulse-dot bg-green-400"></span>
+                In Sync (1240 features)
+              </span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span>Feature Layer: Tower Inspections</span>
+              <span class="flex items-center gap-2">
+                <span class="pulse-dot bg-green-400"></span>
+                In Sync (567 features)
+              </span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span>Feature Layer: Asset Inventory</span>
+              <span class="flex items-center gap-2">
+                <span class="pulse-dot bg-amber-400"></span>
+                Syncing... (89%)
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="bg-card border border-border rounded-2xl p-5">
+          <h3 class="font-semibold mb-3">Sync Controls</h3>
+          <div class="flex gap-3">
+            <button class="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-xl text-white font-medium flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Force Full Sync
+            </button>
+            <button class="bg-slate-700 hover:bg-slate-600 px-6 py-2.5 rounded-xl text-white font-medium flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+              Configure Replication
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMapView() {
+      viewTitle.innerHTML = `${icons.map} ArcGIS Map Viewer`;
+      container.innerHTML = `
+        <div class="bg-card border border-border rounded-2xl p-5">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold flex items-center gap-2">
+              ${icons.map} GIS Data Collection Viewer
+              <span class="text-xs text-slate-400">ArcGIS SDK</span>
+            </h3>
+            <div class="flex gap-2">
+              <button class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm">🗂️ Layers</button>
+              <button class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm">📏 Measure</button>
+              <button class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm">🔍 Query</button>
+            </div>
+          </div>
+          <div id="fullMapView" class="map-container" style="height:600px;"></div>
+          <div class="mt-4 flex flex-wrap gap-4 text-xs text-slate-400">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-500"></span> Active Agent (GPS)</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Idle Agent</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-500"></span> GIS Project Site</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-purple-500"></span> Survey Point</span>
+          </div>
+        </div>
+      `;
+      setTimeout(() => initArcGISMap('fullMapView', [9.0820, 8.6753], 6), 500);
+    }
+
+    // ----- NAVIGATION -----
+    function switchView(view) {
+      setActiveNav(view);
+      const views = {
+        'overview': renderOverview,
+        'agents': renderAgents,
+        'surveys': renderSurveys,
+        'projects': renderProjects,
+        'layers': renderLayers,
+        'sync': renderSync,
+        'mapview': renderMapView
+      };
+      
+      if (views[view]) {
+        views[view]();
+      }
+      
+      sidebar.classList.remove('mobile-open');
+    }
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => switchView(item.dataset.view));
+    });
+    
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      sidebar.classList.toggle('mobile-open');
+    });
+    
+    setInterval(() => {
+      document.getElementById('liveTime').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+    }, 1000);
+    
+    // Initialize with overview
+    switchView('overview');
+  })();
+</script>
+</body>
+</html>
